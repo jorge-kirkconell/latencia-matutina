@@ -50,10 +50,11 @@ const KEYS = {
 
 const DEFAULT_TEAM = {
   members: [
-    { id: 'admin', name: 'Administrador',    token: 'TK-ADMIN-0000', role: 'admin',  active: true },
-    { id: 'demo1', name: 'Juan Pérez',       token: 'TK-JP-1234',   role: 'member', active: true },
-    { id: 'demo2', name: 'María López',      token: 'TK-ML-5678',   role: 'member', active: true },
-    { id: 'demo3', name: 'Carlos Rodríguez', token: 'TK-CR-9012',   role: 'member', active: true },
+    { id: 'admin', name: 'Administrador',      token: 'TK-ADMIN-2025', role: 'admin',  active: true },
+    { id: 'jk',    name: 'Jorge Kirkconell',   token: 'TK-JK-4819',   role: 'admin',  active: true },
+    { id: 'am',    name: 'Allan Martínez',     token: 'TK-AM-7263',   role: 'member', active: true },
+    { id: 'gr',    name: 'Gerson Rivera',      token: 'TK-GR-3057',   role: 'member', active: true },
+    { id: 'fb',    name: 'Francisco Benedith', token: 'TK-FB-9418',   role: 'member', active: true },
   ]
 };
 

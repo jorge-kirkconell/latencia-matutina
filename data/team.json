@@ -1,0 +1,32 @@
+{
+  "members": [
+    {
+      "id": "admin",
+      "name": "Administrador",
+      "token": "TK-ADMIN-0000",
+      "role": "admin",
+      "active": true
+    },
+    {
+      "id": "demo1",
+      "name": "Juan Pérez",
+      "token": "TK-JP-1234",
+      "role": "member",
+      "active": true
+    },
+    {
+      "id": "demo2",
+      "name": "María López",
+      "token": "TK-ML-5678",
+      "role": "member",
+      "active": true
+    },
+    {
+      "id": "demo3",
+      "name": "Carlos Rodríguez",
+      "token": "TK-CR-9012",
+      "role": "member",
+      "active": true
+    }
+  ]
+}

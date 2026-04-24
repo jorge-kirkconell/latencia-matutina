@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#060b18">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Llegué">
+  <title>Latencia Matutina — Registro</title>
+  <meta name="description" content="Registra tu hora de llegada al sistema SLA del Departamento TI">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: Token Entry
+  ══════════════════════════════════════════ -->
+  <div id="screen-token" class="screen active">
+    <div class="screen-inner">
+      <div class="brand">
+        <div class="brand-logo">
+          <i data-lucide="activity"></i>
+        </div>
+        <h1 class="brand-name">Latencia Matutina</h1>
+        <p class="brand-tagline">Sistema SLA · Departamento TI</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon-row">
+          <i data-lucide="key-round"></i>
+          <p class="card-title">Acceso con token</p>
+        </div>
+        <p class="card-desc">Ingresa el token personal que te proporcionó el administrador.</p>
+
+        <div class="field">
+          <input
+            id="token-input"
+            type="text"
+            class="input"
+            placeholder="TK-NOMBRE-0000"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            maxlength="20"
+          >
+        </div>
+
+        <div id="token-error" class="alert alert-danger hidden">
+          <i data-lucide="alert-circle"></i>
+          <span>Token no válido. Verifica con tu administrador.</span>
+        </div>
+
+        <button id="btn-validate-token" class="btn btn-primary btn-block">
+          <i data-lucide="log-in"></i>
+          <span>Acceder</span>
+        </button>
+      </div>
+
+      <p class="screen-footer">v1.0 · Uso interno · Modo demo activo</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: Main Registration
+  ══════════════════════════════════════════ -->
+  <div id="screen-main" class="screen">
+    <div class="screen-inner">
+
+      <!-- Header -->
+      <div class="pwa-header">
+        <div class="user-pill">
+          <div class="user-avatar" id="user-avatar">JP</div>
+          <div class="user-info">
+            <span class="user-greeting">Buen día,</span>
+            <span class="user-name" id="display-name">—</span>
+          </div>
+        </div>
+        <button id="btn-logout" class="icon-btn" aria-label="Cerrar sesión">
+          <i data-lucide="log-out"></i>
+        </button>
+      </div>
+
+      <!-- Clock -->
+      <div class="clock-card" id="clock-card">
+        <div class="live-time" id="live-clock">08:00:00</div>
+        <div class="live-date" id="live-date">—</div>
+        <div class="sla-badge" id="sla-badge">
+          <i data-lucide="check-circle-2"></i>
+          <span id="sla-badge-text">Dentro del SLA</span>
+        </div>
+      </div>
+
+      <!-- Already registered banner -->
+      <div id="registered-banner" class="banner banner-success hidden">
+        <i data-lucide="badge-check"></i>
+        <div>
+          <strong>Ya registraste hoy</strong>
+          <span id="registered-time-label"> — </span>
+        </div>
+        <span id="registered-status-badge" class="status-chip">—</span>
+      </div>
+
+      <!-- Registration Form -->
+      <div id="registration-form" class="card">
+        <div class="card-title-row">
+          <i data-lucide="clipboard-pen"></i>
+          <span>Registrar llegada</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="arrival-time">
+            <i data-lucide="clock-4"></i>
+            Hora de llegada real
+          </label>
+          <input type="time" id="arrival-time" class="input input-time" step="60">
+          <p class="field-hint">Indica la hora exacta en que llegaste a tu estación, aunque la registres después.</p>
+        </div>
+
+        <!-- Penalty Preview -->
+        <div id="penalty-preview" class="penalty-preview hidden">
+          <div id="preview-icon-wrap" class="preview-sev-icon"></div>
+          <div class="preview-text">
+            <p class="preview-label" id="preview-label">—</p>
+            <p class="preview-amount" id="preview-amount">L0</p>
+          </div>
+        </div>
+
+        <!-- Force Majeure Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <p class="toggle-title">
+              <i data-lucide="shield-check"></i>
+              Fuerza Mayor
+            </p>
+            <p class="toggle-desc">Falla de transporte, emergencia familiar, actividad autorizada o desastre natural.</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="fm-toggle">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+
+        <div id="fm-reason-field" class="field hidden">
+          <label class="field-label" for="fm-reason">
+            <i data-lucide="file-text"></i>
+            Motivo
+          </label>
+          <textarea id="fm-reason" class="input textarea" rows="2" placeholder="Describe brevemente el motivo..."></textarea>
+        </div>
+
+        <button id="btn-register" class="btn btn-primary btn-block btn-lg" disabled>
+          <i data-lucide="send"></i>
+          <span>Registrar Llegada</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: Result
+  ══════════════════════════════════════════ -->
+  <div id="screen-result" class="screen">
+    <div class="screen-inner screen-inner--center">
+      <div class="result-card">
+        <div class="result-icon-ring" id="result-icon-ring">
+          <div class="result-icon" id="result-icon">
+            <i data-lucide="check-circle-2"></i>
+          </div>
+        </div>
+
+        <h2 class="result-title" id="result-title">—</h2>
+        <p class="result-subtitle" id="result-subtitle">—</p>
+
+        <div class="result-stats" id="result-stats"></div>
+
+        <div id="coffee-notice" class="coffee-banner hidden">
+          <i data-lucide="coffee"></i>
+          <div>
+            <strong>Obligación Sev 1</strong>
+            <p>Debes traer café para todo el equipo manana.</p>
+          </div>
+        </div>
+
+        <div class="result-meta">
+          <div class="meta-item">
+            <i data-lucide="clock"></i>
+            <span>Enviado a las <strong id="meta-sent-time">—</strong></span>
+          </div>
+          <div class="meta-item">
+            <i data-lucide="hourglass"></i>
+            <span>Estado: <strong class="text-amber">Pendiente de verificación</strong></span>
+          </div>
+        </div>
+
+        <button id="btn-back" class="btn btn-secondary btn-block">
+          <i data-lucide="arrow-left"></i>
+          <span>Volver al inicio</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<!-- Loading overlay -->
+<div id="loading" class="loading-overlay hidden">
+  <div class="loading-spinner">
+    <i data-lucide="loader-2"></i>
+  </div>
+  <span>Enviando registro...</span>
+</div>
+
+<!-- Config FAB -->
+<button id="btn-config" class="fab" aria-label="Configuración">
+  <i data-lucide="settings-2"></i>
+</button>
+
+<!-- Config Modal -->
+<div id="modal-config" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" id="modal-backdrop"></div>
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">
+        <i data-lucide="settings-2"></i>
+        Configuración del sistema
+      </span>
+      <button id="btn-close-config" class="icon-btn"><i data-lucide="x"></i></button>
+    </div>
+
+    <div class="modal-body">
+      <div class="mode-badge" id="mode-badge">
+        <i data-lucide="database"></i>
+        <span id="mode-badge-text">Modo demo (localStorage)</span>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Worker URL</label>
+        <input id="cfg-worker-url" type="url" class="input" placeholder="https://mi-worker.workers.dev">
+        <p class="field-hint">URL del Cloudflare Worker. Vacío = modo demo local.</p>
+      </div>
+      <div class="field">
+        <label class="field-label">GitHub Owner</label>
+        <input id="cfg-gh-owner" type="text" class="input" placeholder="tu-usuario">
+      </div>
+      <div class="field">
+        <label class="field-label">GitHub Repo</label>
+        <input id="cfg-gh-repo" type="text" class="input" placeholder="latencia-matutina">
+      </div>
+
+      <button id="btn-save-config" class="btn btn-primary btn-block">
+        <i data-lucide="save"></i>
+        <span>Guardar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

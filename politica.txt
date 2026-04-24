@@ -1,0 +1,52 @@
+Política Interna — SLA de Puntualidad del Departamento TI
+Versión 1.0
+Disponibilidad requerida: 99.9% a las 8:00 a.m.
+
+Objetivo
+Garantizar altos niveles de disponibilidad humana del personal de TI durante el inicio de operaciones, reduciendo incidentes de latencia matutina y fortaleciendo la cultura de puntualidad.
+
+Definiciones Técnicas
+Disponibilidad:
+Estado en que el recurso humano se encuentra físicamente operativo en su estación a las 8:00 a.m.
+Latencia:
+Retraso medido en minutos entre la hora oficial y la hora real de llegada.
+Incidente de puntualidad:
+Evento donde un colaborador incumple el SLA.
+SLA Breach:
+Violación del acuerdo de nivel de servicio al exceder la tolerancia definida.
+
+Acuerdo de Nivel de Servicio (SLA) 
+•	Tiempo objetivo de llegada: 08:00 a.m. 
+•	Ventana de tolerancia: 2 minutos 
+•	Disponibilidad esperada mensual: 99.9%
+
+
+
+Matriz de Severidad de Incidentes
+Severidad	Retraso	Clasificación	Acción
+Sev 3	3–5 min	Latencia menor	L1 por minuto
+Sev 2	6–15 min	Degradación de servicio	L10 + L1 por minuto
+Sev 1	+15 min	Caída crítica del servicio	L1 por minuto + traer café a todo equipo
+
+
+Eventos de Fuerza Mayor (No computan como incidente) 
+Se excluyen del SLA:
+•	Fallas de transporte 
+•	Emergencias familiares 
+•	Actividades técnicas autorizadas 
+•	Desastres naturales 
+
+Objetivos de Gamificación
+Al alcanzar metas del fondo y cumplir cláusula de excelencia opeativa:
+•	L300 → Desbloqueo desayuno 
+•	L600 → Pizza Day 
+•	L1000 → Almuerzo patrocinado por incidentes
+Cláusula de Excelencia Operativa 
+Si todo el equipo cumple un mes sin incidentes:
+Se declara 100% uptime operativo y se activa el objetivo de gamificación.
+ 
+Registro y Monitoreo 
+Todos los eventos serán registrados en el Dashboard de Latencia Matutina.
+Observación Final 
+Esta política busca fomentar puntualidad, compañerismo y sana convivencia.
+No constituye medida disciplinaria, sino mecanismo de mejora continua y diversión controlada.

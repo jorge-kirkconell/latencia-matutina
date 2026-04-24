@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Latencia Matutina — Dashboard</title>
+  <meta name="description" content="Dashboard de control de puntualidad SLA — Departamento TI">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     TOKEN / LOGIN SCREEN
+══════════════════════════════════════════════ -->
+<div id="screen-login" class="login-screen">
+  <div class="login-panel">
+    <div class="login-brand">
+      <div class="login-logo"><i data-lucide="activity"></i></div>
+      <div>
+        <h1 class="login-title">Latencia Matutina</h1>
+        <p class="login-sub">Dashboard de Control · Departamento TI</p>
+      </div>
+    </div>
+
+    <div class="login-card">
+      <p class="login-card-label">
+        <i data-lucide="key-round"></i>
+        Token de acceso
+      </p>
+      <input id="login-token" type="text" class="input" placeholder="TK-NOMBRE-0000"
+        autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <div id="login-error" class="alert alert-danger hidden">
+        <i data-lucide="alert-circle"></i><span>Token no válido.</span>
+      </div>
+      <button id="btn-login" class="btn btn-primary btn-block">
+        <i data-lucide="log-in"></i><span>Acceder al Dashboard</span>
+      </button>
+    </div>
+
+    <div class="demo-tokens">
+      <p class="demo-label"><i data-lucide="info"></i> Tokens de demo</p>
+      <div class="demo-list">
+        <span class="demo-token" data-token="TK-ADMIN-0000">TK-ADMIN-0000 <em>admin</em></span>
+        <span class="demo-token" data-token="TK-JP-1234">TK-JP-1234 <em>Juan Pérez</em></span>
+        <span class="demo-token" data-token="TK-ML-5678">TK-ML-5678 <em>María López</em></span>
+        <span class="demo-token" data-token="TK-CR-9012">TK-CR-9012 <em>Carlos Rodríguez</em></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════════ -->
+<div id="app" class="app hidden">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo"><i data-lucide="activity"></i></div>
+      <div>
+        <p class="sidebar-title">Latencia</p>
+        <p class="sidebar-sub">Matutina</p>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-tab="today">
+        <i data-lucide="calendar-check"></i><span>Hoy</span>
+      </button>
+      <button class="nav-item" data-tab="month">
+        <i data-lucide="bar-chart-2"></i><span>Mes</span>
+      </button>
+      <button class="nav-item" data-tab="debts">
+        <i data-lucide="coins"></i><span>Deudas</span>
+      </button>
+      <button class="nav-item" data-tab="history">
+        <i data-lucide="history"></i><span>Historial</span>
+      </button>
+      <button class="nav-item" data-tab="admin" id="nav-admin" style="display:none">
+        <i data-lucide="shield-check"></i><span>Admin</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar">JP</div>
+        <div>
+          <p class="sidebar-user-name" id="sidebar-user-name">—</p>
+          <p class="sidebar-user-role" id="sidebar-user-role">—</p>
+        </div>
+      </div>
+      <button id="btn-logout" class="icon-btn" aria-label="Cerrar sesión">
+        <i data-lucide="log-out"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+    <!-- Top bar (mobile) -->
+    <div class="topbar">
+      <button id="btn-menu" class="icon-btn"><i data-lucide="menu"></i></button>
+      <div class="topbar-title" id="topbar-title">Hoy</div>
+      <button id="btn-refresh" class="icon-btn" title="Actualizar datos">
+        <i data-lucide="refresh-cw"></i>
+      </button>
+    </div>
+
+    <!-- Alert banner -->
+    <div id="alert-banner" class="alert-banner hidden"></div>
+
+    <!-- Demo mode badge -->
+    <div id="demo-badge" class="demo-mode-badge">
+      <i data-lucide="database"></i>
+      <span>Modo Demo — datos en localStorage</span>
+    </div>
+
+    <!-- ══ TAB: TODAY ══════════════════════════════════ -->
+    <section id="tab-today" class="tab-content active">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Panel de Hoy</h2>
+          <p class="page-sub" id="today-date-label">—</p>
+        </div>
+        <div class="page-header-actions">
+          <span class="summary-chip" id="chip-total"><i data-lucide="users"></i><span>0 registros</span></span>
+          <span class="summary-chip chip-pending" id="chip-pending"><i data-lucide="hourglass"></i><span>0 pendientes</span></span>
+        </div>
+      </div>
+
+      <!-- Arrival registration widget (shown when not yet registered today) -->
+      <div id="arrival-widget" class="arrival-widget hidden">
+        <!-- Live clock strip -->
+        <div class="aw-clock-row">
+          <div class="aw-clock" id="aw-clock">08:00:00</div>
+          <div class="aw-sla-badge ontime" id="aw-sla-badge">
+            <i data-lucide="check-circle-2"></i>
+            <span id="aw-sla-text">Dentro del SLA</span>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <div class="aw-form">
+          <div class="aw-title-row">
+            <i data-lucide="map-pin"></i>
+            <span>Registrar tu llegada de hoy</span>
+          </div>
+
+          <div class="aw-fields">
+            <div class="field">
+              <label class="field-label" for="aw-arrival-time">
+                <i data-lucide="clock-4"></i> Hora de llegada real
+              </label>
+              <input type="time" id="aw-arrival-time" class="input input-time" step="60">
+              <p class="field-hint">Indica la hora exacta en que llegaste, aunque la registres después.</p>
+            </div>
+
+            <!-- Penalty preview -->
+            <div id="aw-penalty-preview" class="penalty-preview hidden">
+              <div id="aw-preview-icon" class="preview-sev-icon ontime"></div>
+              <div class="preview-text">
+                <p class="preview-label" id="aw-preview-label">A tiempo</p>
+                <p class="preview-amount" id="aw-preview-amount">L0</p>
+              </div>
+            </div>
+
+            <!-- Force Majeure -->
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <p class="toggle-title">
+                  <i data-lucide="shield-check"></i> Fuerza Mayor
+                </p>
+                <p class="toggle-desc">Falla de transporte, emergencia, actividad autorizada o desastre.</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="aw-fm-toggle">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+
+            <div id="aw-fm-reason-field" class="field hidden">
+              <label class="field-label" for="aw-fm-reason">
+                <i data-lucide="file-text"></i> Motivo
+              </label>
+              <textarea id="aw-fm-reason" class="input textarea" rows="2" placeholder="Describe brevemente el motivo..."></textarea>
+            </div>
+          </div>
+
+          <button id="btn-aw-register" class="btn btn-primary btn-block" disabled>
+            <i data-lucide="map-pin"></i>
+            <span>Registrar Llegada</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Already registered confirmation -->
+      <div id="aw-registered-banner" class="aw-registered-banner hidden">
+        <i data-lucide="badge-check"></i>
+        <div>
+          <strong>Ya registraste tu llegada hoy</strong>
+          <span id="aw-registered-time">—</span>
+        </div>
+        <span id="aw-registered-status" class="status-badge pending">Pendiente</span>
+      </div>
+
+      <!-- Today table -->
+      <div class="card">
+        <div class="table-wrap">
+          <table id="today-table" class="data-table">
+            <thead>
+              <tr>
+                <th>Colaborador</th>
+                <th>Hora declarada</th>
+                <th>Registrado a las</th>
+                <th>Severidad</th>
+                <th>Castigo</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="today-tbody">
+              <tr><td colspan="7" class="empty-row"><i data-lucide="loader-2" class="spin"></i> Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TAB: MONTH ══════════════════════════════════ -->
+    <section id="tab-month" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Panel del Mes</h2>
+          <p class="page-sub" id="month-label">—</p>
+        </div>
+      </div>
+
+      <!-- Excellence Clause -->
+      <div class="excellence-card" id="excellence-card">
+        <div class="excellence-icon" id="excellence-icon">
+          <i data-lucide="trophy"></i>
+        </div>
+        <div class="excellence-info">
+          <p class="excellence-title" id="excellence-title">Cláusula de Excelencia</p>
+          <p class="excellence-sub" id="excellence-sub">Calculando...</p>
+        </div>
+        <div class="excellence-badge" id="excellence-badge">—</div>
+      </div>
+
+      <!-- Fund Progress -->
+      <div class="card fund-card">
+        <div class="fund-header">
+          <div class="fund-title-row">
+            <i data-lucide="coins"></i>
+            <span>Fondo del Mes</span>
+          </div>
+          <div class="fund-amount" id="fund-amount">L0</div>
+        </div>
+
+        <div class="progress-track">
+          <div class="progress-fill" id="fund-progress-fill" style="width:0%"></div>
+          <div class="progress-milestone" style="left: 30%" title="L300 — Desayuno">
+            <i data-lucide="coffee"></i>
+          </div>
+          <div class="progress-milestone" style="left: 60%" title="L600 — Pizza Day">
+            <i data-lucide="pizza"></i>
+          </div>
+          <div class="progress-milestone" style="left: 100%" title="L1000 — Almuerzo">
+            <i data-lucide="utensils"></i>
+          </div>
+        </div>
+
+        <div class="fund-milestones">
+          <div class="milestone-item" id="ms-300">
+            <i data-lucide="coffee"></i>
+            <div>
+              <p class="ms-label">L300</p>
+              <p class="ms-name">Desayuno</p>
+            </div>
+          </div>
+          <div class="milestone-item" id="ms-600">
+            <i data-lucide="pizza"></i>
+            <div>
+              <p class="ms-label">L600</p>
+              <p class="ms-name">Pizza Day</p>
+            </div>
+          </div>
+          <div class="milestone-item" id="ms-1000">
+            <i data-lucide="utensils"></i>
+            <div>
+              <p class="ms-label">L1000</p>
+              <p class="ms-name">Almuerzo</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-member summary -->
+      <div class="card">
+        <div class="card-title-row">
+          <i data-lucide="bar-chart-2"></i>
+          <span>Resumen por Colaborador</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Colaborador</th>
+                <th>Incidentes</th>
+                <th>Min. tarde</th>
+                <th>Castigos</th>
+                <th>Pagado</th>
+                <th>Saldo</th>
+              </tr>
+            </thead>
+            <tbody id="month-tbody">
+              <tr><td colspan="6" class="empty-row"><i data-lucide="loader-2" class="spin"></i></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TAB: DEBTS ══════════════════════════════════ -->
+    <section id="tab-debts" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Deudas y Pagos</h2>
+          <p class="page-sub">Castigos acumulados de todos los colaboradores</p>
+        </div>
+      </div>
+
+      <div id="debts-grid" class="debts-grid">
+        <!-- Generated by JS -->
+      </div>
+    </section>
+
+    <!-- ══ TAB: HISTORY ════════════════════════════════ -->
+    <section id="tab-history" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Historial</h2>
+          <p class="page-sub">Todos los registros</p>
+        </div>
+        <div class="page-header-actions">
+          <button id="btn-export-csv" class="btn btn-sm btn-secondary">
+            <i data-lucide="download"></i> Exportar CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <i data-lucide="filter"></i>
+          <select id="filter-member" class="select">
+            <option value="">Todos los colaboradores</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <i data-lucide="calendar"></i>
+          <input type="month" id="filter-month" class="select">
+        </div>
+        <div class="filter-group">
+          <i data-lucide="layers"></i>
+          <select id="filter-status" class="select">
+            <option value="">Todos los estados</option>
+            <option value="pending">Pendiente</option>
+            <option value="verified">Verificado</option>
+            <option value="rejected">Rechazado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Colaborador</th>
+                <th>Hora declarada</th>
+                <th>Sev</th>
+                <th>Castigo</th>
+                <th>Estado</th>
+                <th>Verificado por</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody">
+              <tr><td colspan="7" class="empty-row"><i data-lucide="loader-2" class="spin"></i></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TAB: ADMIN ══════════════════════════════════ -->
+    <section id="tab-admin" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Administración</h2>
+          <p class="page-sub">Gestión del equipo y configuración del sistema</p>
+        </div>
+        <div class="page-header-actions">
+          <button id="btn-add-member" class="btn btn-sm btn-primary">
+            <i data-lucide="user-plus"></i> Agregar colaborador
+          </button>
+        </div>
+      </div>
+
+      <!-- System Config -->
+      <div class="card">
+        <div class="card-title-row">
+          <i data-lucide="settings-2"></i>
+          <span>Configuración del sistema</span>
+        </div>
+        <div class="admin-config-grid">
+          <div class="field">
+            <label class="field-label">Worker URL</label>
+            <input id="adm-worker-url" type="url" class="input" placeholder="https://mi-worker.workers.dev">
+          </div>
+          <div class="field">
+            <label class="field-label">GitHub Owner</label>
+            <input id="adm-gh-owner" type="text" class="input" placeholder="tu-usuario">
+          </div>
+          <div class="field">
+            <label class="field-label">GitHub Repo</label>
+            <input id="adm-gh-repo" type="text" class="input" placeholder="latencia-matutina">
+          </div>
+        </div>
+        <button id="btn-save-config" class="btn btn-primary">
+          <i data-lucide="save"></i><span>Guardar configuración</span>
+        </button>
+      </div>
+
+      <!-- Members Table -->
+      <div class="card">
+        <div class="card-title-row">
+          <i data-lucide="users"></i>
+          <span>Colaboradores</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Token</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="members-tbody">
+              <tr><td colspan="5" class="empty-row"><i data-lucide="loader-2" class="spin"></i></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════ -->
+
+<!-- Verify Modal -->
+<div id="modal-verify" class="modal hidden" role="dialog">
+  <div class="modal-backdrop" id="backdrop-verify"></div>
+  <div class="modal-box modal-md">
+    <div class="modal-header">
+      <span class="modal-title"><i data-lucide="shield-check"></i> Verificar Registro</span>
+      <button class="icon-btn modal-close" data-modal="modal-verify"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="verify-record-info" id="verify-record-info"></div>
+      <div class="field">
+        <label class="field-label">Nota (opcional)</label>
+        <textarea id="verify-note" class="input textarea" rows="2" placeholder="Agrega un comentario si deseas..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-reject-record" class="btn btn-danger">
+        <i data-lucide="x-circle"></i><span>Rechazar</span>
+      </button>
+      <button id="btn-verify-record" class="btn btn-success">
+        <i data-lucide="check-circle-2"></i><span>Verificar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="modal-payment" class="modal hidden" role="dialog">
+  <div class="modal-backdrop" id="backdrop-payment"></div>
+  <div class="modal-box modal-md">
+    <div class="modal-header">
+      <span class="modal-title"><i data-lucide="coins"></i> Registrar Pago</span>
+      <button class="icon-btn modal-close" data-modal="modal-payment"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="payment-debtor-info" id="payment-debtor-info"></div>
+      <div class="field">
+        <label class="field-label">Tipo de pago</label>
+        <select id="pay-type" class="select input">
+          <option value="partial">Abono parcial</option>
+          <option value="full">Pago total del saldo pendiente</option>
+          <option value="coffee">Trajo café (Sev 1)</option>
+        </select>
+      </div>
+      <div class="field" id="pay-amount-field">
+        <label class="field-label">Monto (L)</label>
+        <input id="pay-amount" type="number" class="input" min="1" placeholder="0">
+      </div>
+      <div class="field">
+        <label class="field-label">Descripción</label>
+        <input id="pay-desc" type="text" class="input" placeholder="Ej: Pagó en efectivo hoy">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-save-payment" class="btn btn-primary btn-block">
+        <i data-lucide="check"></i><span>Registrar pago</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Member Modal -->
+<div id="modal-add-member" class="modal hidden" role="dialog">
+  <div class="modal-backdrop" id="backdrop-add-member"></div>
+  <div class="modal-box modal-md">
+    <div class="modal-header">
+      <span class="modal-title"><i data-lucide="user-plus"></i> Agregar Colaborador</span>
+      <button class="icon-btn modal-close" data-modal="modal-add-member"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label class="field-label">Nombre completo</label>
+        <input id="new-member-name" type="text" class="input" placeholder="Juan Pérez">
+      </div>
+      <div class="field">
+        <label class="field-label">Rol</label>
+        <select id="new-member-role" class="select input">
+          <option value="member">Colaborador</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Token generado</label>
+        <div class="token-display">
+          <input id="new-member-token" type="text" class="input" readonly>
+          <button id="btn-regen-token" class="btn btn-sm btn-secondary">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-save-member" class="btn btn-primary btn-block">
+        <i data-lucide="user-plus"></i><span>Agregar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast hidden">
+  <i data-lucide="check-circle-2"></i>
+  <span id="toast-msg">—</span>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

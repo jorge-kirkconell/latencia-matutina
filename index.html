@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Latencia Matutina — Sistema SLA</title>
+  <meta name="description" content="Sistema interno de control de puntualidad SLA — Departamento TI">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #060b18;
+      --bg-card: #0d1629;
+      --bg-card2:#111d36;
+      --border:  #1e2e50;
+      --blue:    #3b82f6;
+      --blue-glow: rgba(59,130,246,.35);
+      --green:   #22c55e;
+      --text-1:  #f0f4ff;
+      --text-2:  #94a3b8;
+      --text-3:  #475569;
+      --radius:  16px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text-1);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+    }
+
+    .hero {
+      text-align: center;
+      max-width: 520px;
+      width: 100%;
+    }
+
+    .logo-ring {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), #6366f1);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+      box-shadow: 0 0 40px var(--blue-glow);
+    }
+    .logo-ring svg { width: 36px; height: 36px; color: #fff; }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #f0f4ff 0%, var(--blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .tagline {
+      font-size: 15px;
+      color: var(--text-2);
+      margin-bottom: 48px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 20px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+      cursor: pointer;
+    }
+    .card:hover {
+      border-color: var(--blue);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px var(--blue-glow);
+    }
+
+    .card-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-icon svg { width: 24px; height: 24px; color: #fff; }
+
+    .icon-dashboard { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+    .icon-pwa       { background: linear-gradient(135deg, #22c55e, #10b981); }
+
+    .card-name {
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .card-desc {
+      font-size: 12px;
+      color: var(--text-2);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .badge-desktop { background: rgba(99,102,241,.15); color: #818cf8; border: 1px solid rgba(99,102,241,.3); }
+    .badge-mobile  { background: rgba(34,197,94,.15);  color: #4ade80;  border: 1px solid rgba(34,197,94,.3); }
+
+    footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    @media (max-width: 420px) {
+      .cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="logo-ring">
+    <i data-lucide="activity"></i>
+  </div>
+  <h1>Latencia Matutina</h1>
+  <p class="tagline">Sistema SLA de Control de Puntualidad · Departamento TI</p>
+
+  <div class="cards">
+    <a href="./dashboard/" class="card" id="link-dashboard">
+      <div class="card-icon icon-dashboard">
+        <i data-lucide="layout-dashboard"></i>
+      </div>
+      <span class="card-name">Dashboard</span>
+      <span class="badge badge-desktop">Desktop / Tablet</span>
+      <p class="card-desc">Panel de administración, verificación de registros y estadísticas del mes.</p>
+    </a>
+
+    <a href="./pwa/" class="card" id="link-pwa">
+      <div class="card-icon icon-pwa">
+        <i data-lucide="smartphone"></i>
+      </div>
+      <span class="card-name">App "Llegué"</span>
+      <span class="badge badge-mobile">Móvil / PWA</span>
+      <p class="card-desc">Registra tu hora de llegada desde tu celular. Instálala en tu pantalla de inicio.</p>
+    </a>
+  </div>
+</div>
+
+<footer>v1.0 · Uso interno · jorge-kirkconell/latencia-matutina</footer>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+</script>
+</body>
+</html>

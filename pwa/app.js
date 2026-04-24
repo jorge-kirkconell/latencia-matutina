@@ -1,6 +1,7 @@
 /**
  * Latencia Matutina — PWA App Logic
- * Handles: auth, penalty calc, registration, API (mock + real)
+ * Handles: auth, penalty calc, registration
+ * Backend: Firebase Realtime Database
  */
 
 'use strict';
@@ -38,15 +39,7 @@ const SEV_ICONS = {
 // ══════════════════════════════════════════════════════════
 //  MOCK API  (localStorage — no backend needed)
 // ══════════════════════════════════════════════════════════
-const KEYS = {
-  team:       'lm_team',
-  records:    'lm_records',
-  payments:   'lm_payments',
-  token:      'lm_token',
-  workerUrl:  'lm_worker_url',
-  ghOwner:    'lm_gh_owner',
-  ghRepo:     'lm_gh_repo',
-};
+const KEYS = { token: 'lm_token' };
 
 const DEFAULT_TEAM = {
   members: [
@@ -58,74 +51,47 @@ const DEFAULT_TEAM = {
   ]
 };
 
-function initMockData() {
-  if (!localStorage.getItem(KEYS.team))     localStorage.setItem(KEYS.team,     JSON.stringify(DEFAULT_TEAM));
-  if (!localStorage.getItem(KEYS.records))  localStorage.setItem(KEYS.records,  JSON.stringify({ records: [] }));
-  if (!localStorage.getItem(KEYS.payments)) localStorage.setItem(KEYS.payments, JSON.stringify({ payments: [] }));
-}
-
-// Determine if we're in mock mode
-function isMockMode() { return !localStorage.getItem(KEYS.workerUrl); }
-
-// ── Read helpers ─────────────────────────────────────────
+// ── Read helpers — Firebase Realtime Database ────────────
 async function readTeam() {
-  if (isMockMode()) return JSON.parse(localStorage.getItem(KEYS.team));
-  const owner = localStorage.getItem(KEYS.ghOwner);
-  const repo  = localStorage.getItem(KEYS.ghRepo);
-  const r = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/data/team.json?t=${Date.now()}`);
-  return r.json();
+  const snap = await db.ref('team').get();
+  return snap.exists() ? snap.val() : DEFAULT_TEAM;
 }
 
 async function readRecords() {
-  if (isMockMode()) return JSON.parse(localStorage.getItem(KEYS.records));
-  const owner = localStorage.getItem(KEYS.ghOwner);
-  const repo  = localStorage.getItem(KEYS.ghRepo);
-  const r = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/data/records.json?t=${Date.now()}`);
-  return r.json();
+  const snap = await db.ref('records').get();
+  return snap.exists() ? snap.val() : { records: [] };
 }
 
-// ── Write helper (mock or via Worker) ───────────────────
+// ── Write helper — Firebase Realtime Database ────────────
 async function writeAction(action, payload) {
-  if (isMockMode()) {
-    return writeActionMock(action, payload);
-  }
-  const workerUrl = localStorage.getItem(KEYS.workerUrl);
-  const r = await fetch(workerUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ collaboratorToken: STATE.token, action, payload }),
-  });
-  const data = await r.json();
-  if (!r.ok || data.error) throw new Error(data.error || 'Error del servidor');
-  return data;
-}
-
-function writeActionMock(action, payload) {
   if (action === 'add_record') {
-    const data = JSON.parse(localStorage.getItem(KEYS.records));
+    const snap = await db.ref('records').get();
+    const data = snap.exists() ? snap.val() : { records: [] };
     data.records.push(payload);
-    localStorage.setItem(KEYS.records, JSON.stringify(data));
+    await db.ref('records').set(data);
     return { success: true };
   }
   if (action === 'update_record') {
-    const data = JSON.parse(localStorage.getItem(KEYS.records));
-    const idx = data.records.findIndex(r => r.id === payload.recordId);
+    const snap = await db.ref('records').get();
+    const data = snap.exists() ? snap.val() : { records: [] };
+    const idx  = data.records.findIndex(r => r.id === payload.recordId);
     if (idx !== -1) {
       if (payload.updates.verifiedBy === data.records[idx].memberId) {
         throw new Error('No puedes verificar tu propio registro');
       }
       data.records[idx] = { ...data.records[idx], ...payload.updates };
-      localStorage.setItem(KEYS.records, JSON.stringify(data));
+      await db.ref('records').set(data);
     }
     return { success: true };
   }
   if (action === 'add_payment') {
-    const data = JSON.parse(localStorage.getItem(KEYS.payments));
+    const snap = await db.ref('payments').get();
+    const data = snap.exists() ? snap.val() : { payments: [] };
     data.payments.push(payload);
-    localStorage.setItem(KEYS.payments, JSON.stringify(data));
+    await db.ref('payments').set(data);
     return { success: true };
   }
-  return { success: false, error: 'Acción desconocida' };
+  throw new Error(`Acción desconocida: ${action}`);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -438,36 +404,11 @@ function setLoading(on, text = '') {
 //  CONFIG MODAL
 // ══════════════════════════════════════════════════════════
 function openConfig() {
-  document.getElementById('cfg-worker-url').value = localStorage.getItem(KEYS.workerUrl) || '';
-  document.getElementById('cfg-gh-owner').value   = localStorage.getItem(KEYS.ghOwner)   || '';
-  document.getElementById('cfg-gh-repo').value    = localStorage.getItem(KEYS.ghRepo)    || '';
-  updateModeBadge();
   document.getElementById('modal-config').classList.remove('hidden');
+  lucide.createIcons();
 }
 function closeConfig() { document.getElementById('modal-config').classList.add('hidden'); }
 
-function saveConfig() {
-  const url   = document.getElementById('cfg-worker-url').value.trim();
-  const owner = document.getElementById('cfg-gh-owner').value.trim();
-  const repo  = document.getElementById('cfg-gh-repo').value.trim();
-  if (url)   localStorage.setItem(KEYS.workerUrl, url); else localStorage.removeItem(KEYS.workerUrl);
-  if (owner) localStorage.setItem(KEYS.ghOwner,   owner);
-  if (repo)  localStorage.setItem(KEYS.ghRepo,    repo);
-  updateModeBadge();
-  closeConfig();
-}
-
-function updateModeBadge() {
-  const badge = document.getElementById('mode-badge');
-  const text  = document.getElementById('mode-badge-text');
-  if (isMockMode()) {
-    text.textContent = 'Modo demo (datos locales)';
-    badge.innerHTML  = `<i data-lucide="database"></i><span>Modo demo (datos locales)</span>`;
-  } else {
-    badge.innerHTML  = `<i data-lucide="cloud"></i><span>Conectado a GitHub</span>`;
-  }
-  lucide.createIcons();
-}
 
 // ══════════════════════════════════════════════════════════
 //  INIT
@@ -477,9 +418,6 @@ async function init() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
-
-  // Initialize mock data
-  initMockData();
 
   // Retrieve saved token
   const savedToken = localStorage.getItem(KEYS.token);
@@ -543,5 +481,4 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-config').addEventListener('click', openConfig);
   document.getElementById('btn-close-config').addEventListener('click', closeConfig);
   document.getElementById('modal-backdrop').addEventListener('click', closeConfig);
-  document.getElementById('btn-save-config').addEventListener('click', saveConfig);
 });

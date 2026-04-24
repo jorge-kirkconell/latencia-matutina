@@ -1,7 +1,7 @@
 /**
  * Latencia Matutina — Dashboard App Logic
  * Full system: auth, today panel, month/fund, debts, history, admin
- * Mock mode: localStorage | Real mode: Cloudflare Worker + GitHub raw
+ * Backend: Firebase Realtime Database
  */
 
 'use strict';
@@ -24,15 +24,7 @@ function calculatePenalty(timeStr) {
 // ══════════════════════════════════════════════════════════
 //  STORAGE KEYS
 // ══════════════════════════════════════════════════════════
-const KEYS = {
-  token:      'lm_token',
-  team:       'lm_team',
-  records:    'lm_records',
-  payments:   'lm_payments',
-  workerUrl:  'lm_worker_url',
-  ghOwner:    'lm_gh_owner',
-  ghRepo:     'lm_gh_repo',
-};
+const KEYS = { token: 'lm_token' };
 
 const DEFAULT_TEAM = {
   members: [
@@ -61,88 +53,56 @@ const APP = {
 };
 
 // ══════════════════════════════════════════════════════════
-//  MOCK DATA INIT
-// ══════════════════════════════════════════════════════════
-function initMockData() {
-  if (!ls(KEYS.team))     lsSet(KEYS.team,     DEFAULT_TEAM);
-  if (!ls(KEYS.records))  lsSet(KEYS.records,  { records: [] });
-  if (!ls(KEYS.payments)) lsSet(KEYS.payments, { payments: [] });
-}
-
-function ls(key)         { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
-function lsSet(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
-function isMock()        { return !localStorage.getItem(KEYS.workerUrl); }
-
-// ══════════════════════════════════════════════════════════
-//  DATA ACCESS
+//  DATA ACCESS — Firebase Realtime Database
 // ══════════════════════════════════════════════════════════
 async function fetchTeam() {
-  if (isMock()) return ls(KEYS.team);
-  const owner = localStorage.getItem(KEYS.ghOwner);
-  const repo  = localStorage.getItem(KEYS.ghRepo);
-  const r = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/data/team.json?_=${Date.now()}`);
-  return r.json();
+  const snap = await db.ref('team').get();
+  return snap.exists() ? snap.val() : DEFAULT_TEAM;
 }
 
 async function fetchRecords() {
-  if (isMock()) return ls(KEYS.records);
-  const owner = localStorage.getItem(KEYS.ghOwner);
-  const repo  = localStorage.getItem(KEYS.ghRepo);
-  const r = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/data/records.json?_=${Date.now()}`);
-  return r.json();
+  const snap = await db.ref('records').get();
+  return snap.exists() ? snap.val() : { records: [] };
 }
 
 async function fetchPayments() {
-  if (isMock()) return ls(KEYS.payments);
-  const owner = localStorage.getItem(KEYS.ghOwner);
-  const repo  = localStorage.getItem(KEYS.ghRepo);
-  const r = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/data/payments.json?_=${Date.now()}`);
-  return r.json();
+  const snap = await db.ref('payments').get();
+  return snap.exists() ? snap.val() : { payments: [] };
 }
 
 async function writeAction(action, payload) {
-  if (isMock()) return writeMock(action, payload);
-  const workerUrl = localStorage.getItem(KEYS.workerUrl);
-  const r = await fetch(workerUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ collaboratorToken: APP.token, action, payload }),
-  });
-  const data = await r.json();
-  if (!r.ok || data.error) throw new Error(data.error || 'Error del servidor');
-  return data;
-}
-
-function writeMock(action, payload) {
   if (action === 'add_record') {
-    const d = ls(KEYS.records);
-    d.records.push(payload);
-    lsSet(KEYS.records, d);
+    const snap = await db.ref('records').get();
+    const data = snap.exists() ? snap.val() : { records: [] };
+    data.records.push(payload);
+    await db.ref('records').set(data);
     return { success: true };
   }
   if (action === 'update_record') {
-    const d = ls(KEYS.records);
-    const idx = d.records.findIndex(r => r.id === payload.recordId);
+    const { recordId, updates } = payload;
+    const snap = await db.ref('records').get();
+    const data = snap.exists() ? snap.val() : { records: [] };
+    const idx  = data.records.findIndex(r => r.id === recordId);
     if (idx === -1) throw new Error('Registro no encontrado');
-    const rec = d.records[idx];
-    if (payload.updates.verifiedBy && payload.updates.verifiedBy === rec.memberId) {
+    if (updates.verifiedBy && updates.verifiedBy === data.records[idx].memberId) {
       throw new Error('No puedes verificar tu propio registro');
     }
-    d.records[idx] = { ...rec, ...payload.updates };
-    lsSet(KEYS.records, d);
+    data.records[idx] = { ...data.records[idx], ...updates };
+    await db.ref('records').set(data);
     return { success: true };
   }
   if (action === 'add_payment') {
-    const d = ls(KEYS.payments);
-    d.payments.push(payload);
-    lsSet(KEYS.payments, d);
+    const snap = await db.ref('payments').get();
+    const data = snap.exists() ? snap.val() : { payments: [] };
+    data.payments.push(payload);
+    await db.ref('payments').set(data);
     return { success: true };
   }
   if (action === 'update_team') {
-    lsSet(KEYS.team, payload);
+    await db.ref('team').set(payload);
     return { success: true };
   }
-  return { success: false };
+  throw new Error(`Acción desconocida: ${action}`);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -547,11 +507,6 @@ function renderHistory() {
 //  TAB: ADMIN
 // ══════════════════════════════════════════════════════════
 function renderAdmin() {
-  // Load config values
-  document.getElementById('adm-worker-url').value = localStorage.getItem(KEYS.workerUrl) || '';
-  document.getElementById('adm-gh-owner').value   = localStorage.getItem(KEYS.ghOwner)   || '';
-  document.getElementById('adm-gh-repo').value    = localStorage.getItem(KEYS.ghRepo)    || '';
-
   // Members table
   const members = APP.team?.members || [];
   const tbody   = document.getElementById('members-tbody');
@@ -942,23 +897,6 @@ function closeModal(id) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  CONFIG SAVE (ADMIN TAB)
-// ══════════════════════════════════════════════════════════
-function saveConfig() {
-  const url   = document.getElementById('adm-worker-url').value.trim();
-  const owner = document.getElementById('adm-gh-owner').value.trim();
-  const repo  = document.getElementById('adm-gh-repo').value.trim();
-
-  if (url)   localStorage.setItem(KEYS.workerUrl, url); else localStorage.removeItem(KEYS.workerUrl);
-  if (owner) localStorage.setItem(KEYS.ghOwner,   owner);
-  if (repo)  localStorage.setItem(KEYS.ghRepo,    repo);
-
-  // Update demo badge
-  document.getElementById('demo-badge').classList.toggle('hidden', !isMock());
-  showToast('Configuración guardada');
-}
-
-// ══════════════════════════════════════════════════════════
 //  AUTH
 // ══════════════════════════════════════════════════════════
 async function doLogin() {
@@ -995,9 +933,6 @@ async function startApp(member) {
     document.getElementById('nav-admin').style.display = '';
   }
 
-  // Demo badge
-  document.getElementById('demo-badge').classList.toggle('hidden', !isMock());
-
   // Show app, hide login
   document.getElementById('screen-login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
@@ -1023,7 +958,6 @@ function doLogout() {
 //  INIT
 // ══════════════════════════════════════════════════════════
 async function init() {
-  initMockData();
   lucide.createIcons();
 
   // Try auto-login
@@ -1048,12 +982,6 @@ async function init() {
     if (e.key === 'Enter') doLogin();
   });
 
-  // Demo token quick-fill
-  document.querySelectorAll('.demo-token').forEach(el => {
-    el.addEventListener('click', () => {
-      document.getElementById('login-token').value = el.dataset.token;
-    });
-  });
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1115,9 +1043,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   document.getElementById('btn-save-member').addEventListener('click', saveNewMember);
-
-  // Save config (admin tab)
-  document.getElementById('btn-save-config').addEventListener('click', saveConfig);
 
   // History filters
   document.getElementById('filter-member').addEventListener('change', renderHistory);

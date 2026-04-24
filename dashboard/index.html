@@ -105,11 +105,8 @@
     <!-- Alert banner -->
     <div id="alert-banner" class="alert-banner hidden"></div>
 
-    <!-- Demo mode badge -->
-    <div id="demo-badge" class="demo-mode-badge">
-      <i data-lucide="database"></i>
-      <span>Modo Demo — datos en localStorage</span>
-    </div>
+    <!-- Demo mode badge (hidden — Firebase mode) -->
+    <div id="demo-badge" class="demo-mode-badge hidden"></div>
 
     <!-- ══ TAB: TODAY ══════════════════════════════════ -->
     <section id="tab-today" class="tab-content active">
@@ -410,23 +407,14 @@
           <i data-lucide="settings-2"></i>
           <span>Configuración del sistema</span>
         </div>
-        <div class="admin-config-grid">
-          <div class="field">
-            <label class="field-label">Worker URL</label>
-            <input id="adm-worker-url" type="url" class="input" placeholder="https://mi-worker.workers.dev">
+        <div class="member-cell" style="padding:12px 0;gap:16px">
+          <div class="cell-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444);flex-shrink:0">FB</div>
+          <div>
+            <p style="font-weight:600;font-size:14px">Firebase Realtime Database</p>
+            <p style="font-size:12px;color:var(--text-2)">latencia-matutina · Sincronización automática en la nube</p>
           </div>
-          <div class="field">
-            <label class="field-label">GitHub Owner</label>
-            <input id="adm-gh-owner" type="text" class="input" placeholder="tu-usuario">
-          </div>
-          <div class="field">
-            <label class="field-label">GitHub Repo</label>
-            <input id="adm-gh-repo" type="text" class="input" placeholder="latencia-matutina">
-          </div>
+          <span class="status-badge verified" style="margin-left:auto;flex-shrink:0">Activo</span>
         </div>
-        <button id="btn-save-config" class="btn btn-primary">
-          <i data-lucide="save"></i><span>Guardar configuración</span>
-        </button>
       </div>
 
       <!-- Members Table -->
@@ -566,6 +554,9 @@
   <span id="toast-msg">—</span>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="../firebase-config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -238,32 +238,19 @@
 
     <div class="modal-body">
       <div class="mode-badge" id="mode-badge">
-        <i data-lucide="database"></i>
-        <span id="mode-badge-text">Modo demo (localStorage)</span>
+        <i data-lucide="cloud"></i>
+        <span>Firebase — Sincronizado</span>
       </div>
-
-      <div class="field">
-        <label class="field-label">Worker URL</label>
-        <input id="cfg-worker-url" type="url" class="input" placeholder="https://mi-worker.workers.dev">
-        <p class="field-hint">URL del Cloudflare Worker. Vacío = modo demo local.</p>
-      </div>
-      <div class="field">
-        <label class="field-label">GitHub Owner</label>
-        <input id="cfg-gh-owner" type="text" class="input" placeholder="tu-usuario">
-      </div>
-      <div class="field">
-        <label class="field-label">GitHub Repo</label>
-        <input id="cfg-gh-repo" type="text" class="input" placeholder="latencia-matutina">
-      </div>
-
-      <button id="btn-save-config" class="btn btn-primary btn-block">
-        <i data-lucide="save"></i>
-        <span>Guardar</span>
-      </button>
+      <p style="color:var(--text-2);font-size:13px;text-align:center;margin-top:16px;line-height:1.6">
+        Todos los registros se guardan automáticamente en Firebase Realtime Database.<br>No se requiere configuración adicional.
+      </p>
     </div>
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="../firebase-config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

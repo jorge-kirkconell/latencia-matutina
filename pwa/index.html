@@ -101,11 +101,14 @@
       <!-- Already registered banner -->
       <div id="registered-banner" class="banner banner-success hidden">
         <i data-lucide="badge-check"></i>
-        <div>
+        <div style="flex:1">
           <strong>Ya registraste hoy</strong>
           <span id="registered-time-label"> — </span>
         </div>
         <span id="registered-status-badge" class="status-chip">—</span>
+        <button id="btn-delete-record" class="btn btn-sm btn-danger hidden" title="Corregir registro">
+          <i data-lucide="trash-2"></i>
+        </button>
       </div>
 
       <!-- Registration Form -->

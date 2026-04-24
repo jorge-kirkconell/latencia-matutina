@@ -91,6 +91,17 @@ async function writeAction(action, payload) {
     await db.ref('payments').set(data);
     return { success: true };
   }
+  if (action === 'delete_record') {
+    const snap = await db.ref('records').get();
+    const data = snap.exists() ? snap.val() : { records: [] };
+    const idx  = data.records.findIndex(r => r.id === payload.recordId);
+    if (idx === -1) throw new Error('Registro no encontrado');
+    if (data.records[idx].memberId !== payload.memberId) throw new Error('No puedes eliminar el registro de otro colaborador');
+    if (data.records[idx].status !== 'pending') throw new Error('Solo se pueden eliminar registros pendientes');
+    data.records.splice(idx, 1);
+    await db.ref('records').set(data);
+    return { success: true };
+  }
   throw new Error(`Acción desconocida: ${action}`);
 }
 
@@ -247,6 +258,14 @@ async function loadMainScreen() {
       chip.textContent = { pending: 'Pendiente', verified: 'Verificado', rejected: 'Rechazado' }[existing.status] || existing.status;
       chip.className = `status-chip ${existing.status}`;
       form.classList.add('hidden');
+      // Mostrar botón corregir solo si el registro está pendiente
+      const btnDel = document.getElementById('btn-delete-record');
+      if (existing.status === 'pending') {
+        btnDel.classList.remove('hidden');
+        btnDel.onclick = () => handleDeleteRecord(existing.id);
+      } else {
+        btnDel.classList.add('hidden');
+      }
     } else {
       banner.classList.add('hidden');
       form.classList.remove('hidden');
@@ -279,6 +298,23 @@ function updatePenaltyPreview() {
   label.textContent = fmOn ? 'Fuerza Mayor — Sin castigo' : result.label;
   amount.textContent = fmOn ? 'L0' : `L${result.penalty}`;
   lucide.createIcons();
+}
+
+// ══════════════════════════════════════════════════════════
+//  DELETE / CORRECT RECORD
+// ══════════════════════════════════════════════════════════
+async function handleDeleteRecord(recordId) {
+  if (!confirm('¿Eliminar tu registro de hoy para corregirlo?')) return;
+  setLoading(true, 'Eliminando registro...');
+  try {
+    await writeAction('delete_record', { recordId, memberId: STATE.member.id });
+    STATE.todayRecord = null;
+    await loadMainScreen();
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ══════════════════════════════════════════════════════════

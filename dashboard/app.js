@@ -98,6 +98,17 @@ async function writeAction(action, payload) {
     await db.ref('payments').set(data);
     return { success: true };
   }
+  if (action === 'delete_record') {
+    const snap = await db.ref('records').get();
+    const data = snap.exists() ? snap.val() : { records: [] };
+    const idx  = data.records.findIndex(r => r.id === payload.recordId);
+    if (idx === -1) throw new Error('Registro no encontrado');
+    if (data.records[idx].memberId !== payload.memberId) throw new Error('No puedes eliminar el registro de otro colaborador');
+    if (data.records[idx].status !== 'pending') throw new Error('Solo se pueden eliminar registros pendientes');
+    data.records.splice(idx, 1);
+    await db.ref('records').set(data);
+    return { success: true };
+  }
   if (action === 'update_team') {
     await db.ref('team').set(payload);
     return { success: true };
@@ -307,7 +318,9 @@ function renderToday() {
           ${canVerify ? `<button class="btn btn-sm btn-success" onclick="openVerifyModal('${r.id}')">
             <i data-lucide="shield-check"></i> Verificar
           </button>` : ''}
-          ${r.status === 'pending' && !isSelf ? '' : (isSelf ? '<span style="color:var(--text-3);font-size:12px">—</span>' : '')}
+          ${isSelf && r.status === 'pending' ? `<button class="btn btn-sm btn-danger" onclick="deleteOwnRecord('${r.id}')">
+            <i data-lucide="trash-2"></i> Corregir
+          </button>` : ''}
           ${r.status !== 'pending' && r.verifierName ? `<span style="font-size:12px;color:var(--text-3)">por ${r.verifierName}</span>` : ''}
         </div>
       </td>
@@ -533,6 +546,20 @@ function renderAdmin() {
   </tr>`).join('');
 
   lucide.createIcons();
+}
+
+// ══════════════════════════════════════════════════════════
+//  DELETE / CORRECT OWN RECORD
+// ══════════════════════════════════════════════════════════
+async function deleteOwnRecord(recordId) {
+  if (!confirm('¿Eliminar tu registro para corregirlo? Solo puedes hacerlo mientras esté pendiente.')) return;
+  try {
+    await writeAction('delete_record', { recordId, memberId: APP.member.id });
+    showToast('Registro eliminado — ya puedes ingresar la hora correcta');
+    await refreshData();
+  } catch (err) {
+    showToast(err.message, true);
+  }
 }
 
 // ══════════════════════════════════════════════════════════

@@ -24,7 +24,7 @@ function calculatePenalty(timeStr) {
 // ══════════════════════════════════════════════════════════
 //  STORAGE KEYS
 // ══════════════════════════════════════════════════════════
-const KEYS = { token: 'lm_token', tab: 'lm_tab' };
+const KEYS = { token: 'lm_token' };
 
 const DEFAULT_TEAM = {
   members: [
@@ -205,7 +205,7 @@ function showToast(msg, isError = false) {
 // ══════════════════════════════════════════════════════════
 function switchTab(tabId) {
   APP.activeTab = tabId;
-  localStorage.setItem(KEYS.tab, tabId);
+  history.replaceState(null, '', '#' + tabId);
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`tab-${tabId}`)?.classList.add('active');
@@ -494,17 +494,20 @@ function renderHistory() {
 
   const tbody = document.getElementById('history-tbody');
   if (!recs.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-row"><i data-lucide="inbox"></i> Sin registros</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-row"><i data-lucide="inbox"></i> Sin registros</td></tr>`;
     lucide.createIcons();
     return;
   }
 
-  tbody.innerHTML = recs.map(r => `<tr>
+  tbody.innerHTML = recs.map(r => {
+    const isSelf     = r.memberId === APP.member.id;
+    const canVerify  = !isSelf && r.status === 'pending';
+    return `<tr>
     <td><span style="font-size:12px;font-weight:600;color:var(--text-2)">${fmtDate(r.date)}</span></td>
     <td>
       <div class="member-cell">
         <div class="cell-avatar">${initials(r.memberName)}</div>
-        <span class="${r.memberId === APP.member.id ? 'cell-name cell-self' : 'cell-name'}">${r.memberName}</span>
+        <span class="${isSelf ? 'cell-name cell-self' : 'cell-name'}">${r.memberName}${isSelf ? ' (tú)' : ''}</span>
       </div>
     </td>
     <td><strong>${fmt12(r.claimedArrivalTime)}</strong></td>
@@ -512,7 +515,13 @@ function renderHistory() {
     <td>${r.isForceMajeure ? '<span style="color:var(--text-3)">—</span>' : moneyCell(r.penalty)}</td>
     <td>${statusBadge(r.status)}</td>
     <td><span style="font-size:12px;color:var(--text-3)">${r.verifierName || '—'}</span></td>
-  </tr>`).join('');
+    <td>
+      ${canVerify ? `<button class="btn btn-sm btn-success" onclick="openVerifyModal('${r.id}')">
+        <i data-lucide="shield-check"></i> Verificar
+      </button>` : ''}
+    </td>
+  </tr>`;
+  }).join('');
 
   lucide.createIcons();
 }
@@ -991,7 +1000,9 @@ async function startApp(member) {
 
   // Load data and render
   await loadAllData();
-  switchTab(localStorage.getItem(KEYS.tab) || 'today');
+  const VALID_TABS = ['today', 'month', 'debts', 'history', 'admin'];
+  const hashTab = window.location.hash.replace('#', '');
+  switchTab(VALID_TABS.includes(hashTab) ? hashTab : 'today');
   startRecordsListener();
 }
 
@@ -999,7 +1010,7 @@ function doLogout() {
   if (!confirm('¿Cerrar sesión?')) return;
   stopRecordsListener();
   localStorage.removeItem(KEYS.token);
-  localStorage.removeItem(KEYS.tab);
+  history.replaceState(null, '', window.location.pathname);
   APP.token  = null;
   APP.member = null;
   document.getElementById('app').classList.add('hidden');

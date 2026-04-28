@@ -24,7 +24,7 @@ function calculatePenalty(timeStr) {
 // ══════════════════════════════════════════════════════════
 //  STORAGE KEYS
 // ══════════════════════════════════════════════════════════
-const KEYS = { token: 'lm_token' };
+const KEYS = { token: 'lm_token', tab: 'lm_tab' };
 
 const DEFAULT_TEAM = {
   members: [
@@ -205,6 +205,7 @@ function showToast(msg, isError = false) {
 // ══════════════════════════════════════════════════════════
 function switchTab(tabId) {
   APP.activeTab = tabId;
+  localStorage.setItem(KEYS.tab, tabId);
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`tab-${tabId}`)?.classList.add('active');
@@ -801,6 +802,30 @@ function exportCSV() {
 }
 
 // ══════════════════════════════════════════════════════════
+//  REAL-TIME LISTENER
+// ══════════════════════════════════════════════════════════
+let _recordsListener = null;
+
+function startRecordsListener() {
+  if (_recordsListener) db.ref('records').off('value', _recordsListener);
+  _recordsListener = snap => {
+    const fresh = snap.exists() ? (snap.val().records || []) : [];
+    // Avoid redundant re-render when our own write already updated APP.records
+    if (JSON.stringify(fresh) === JSON.stringify(APP.records)) return;
+    APP.records = fresh;
+    switchTab(APP.activeTab);
+  };
+  db.ref('records').on('value', _recordsListener);
+}
+
+function stopRecordsListener() {
+  if (_recordsListener) {
+    db.ref('records').off('value', _recordsListener);
+    _recordsListener = null;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
 //  ARRIVAL WIDGET (dashboard inline registration)
 // ══════════════════════════════════════════════════════════
 let awClockInterval = null;
@@ -966,12 +991,15 @@ async function startApp(member) {
 
   // Load data and render
   await loadAllData();
-  switchTab('today');
+  switchTab(localStorage.getItem(KEYS.tab) || 'today');
+  startRecordsListener();
 }
 
 function doLogout() {
   if (!confirm('¿Cerrar sesión?')) return;
+  stopRecordsListener();
   localStorage.removeItem(KEYS.token);
+  localStorage.removeItem(KEYS.tab);
   APP.token  = null;
   APP.member = null;
   document.getElementById('app').classList.add('hidden');

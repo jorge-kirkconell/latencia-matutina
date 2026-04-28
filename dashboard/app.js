@@ -230,13 +230,18 @@ function switchTab(tabId) {
 // ══════════════════════════════════════════════════════════
 //  LOAD ALL DATA
 // ══════════════════════════════════════════════════════════
+function toArray(val) {
+  if (!val) return [];
+  return Array.isArray(val) ? val : Object.values(val);
+}
+
 async function loadAllData() {
   const [teamData, recordsData, paymentsData] = await Promise.all([
     fetchTeam(), fetchRecords(), fetchPayments()
   ]);
   APP.team     = teamData;
-  APP.records  = recordsData.records || [];
-  APP.payments = paymentsData.payments || [];
+  APP.records  = toArray(recordsData.records);
+  APP.payments = toArray(paymentsData.payments);
 }
 
 async function refreshData() {
@@ -487,7 +492,9 @@ function renderHistory() {
     });
   }
 
-  let recs = [...APP.records].sort((a, b) => b.date.localeCompare(a.date));
+  let recs = APP.records
+    .filter(r => r && r.date)
+    .sort((a, b) => b.date.localeCompare(a.date));
   if (memberFilter) recs = recs.filter(r => r.memberId === memberFilter);
   if (monthFilter)  recs = recs.filter(r => r.date && r.date.startsWith(monthFilter));
   if (statusFilter) recs = recs.filter(r => r.status === statusFilter);
@@ -818,8 +825,7 @@ let _recordsListener = null;
 function startRecordsListener() {
   if (_recordsListener) db.ref('records').off('value', _recordsListener);
   _recordsListener = snap => {
-    const fresh = snap.exists() ? (snap.val().records || []) : [];
-    // Avoid redundant re-render when our own write already updated APP.records
+    const fresh = toArray(snap.exists() ? snap.val().records : null);
     if (JSON.stringify(fresh) === JSON.stringify(APP.records)) return;
     APP.records = fresh;
     switchTab(APP.activeTab);
@@ -1114,9 +1120,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('filter-member').addEventListener('change', renderHistory);
   document.getElementById('filter-month').addEventListener('change', renderHistory);
   document.getElementById('filter-status').addEventListener('change', renderHistory);
-
-  // Set default month filter to current month
-  document.getElementById('filter-month').value = currentYearMonth();
 
   // Export CSV
   document.getElementById('btn-export-csv').addEventListener('click', exportCSV);

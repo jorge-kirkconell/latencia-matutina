@@ -70,43 +70,52 @@ async function fetchPayments() {
   return snap.exists() ? snap.val() : { payments: [] };
 }
 
+function fbToArray(val) {
+  if (!val) return [];
+  return Array.isArray(val) ? val : Object.values(val);
+}
+
 async function writeAction(action, payload) {
   if (action === 'add_record') {
     const snap = await db.ref('records').get();
-    const data = snap.exists() ? snap.val() : { records: [] };
-    data.records.push(payload);
-    await db.ref('records').set(data);
+    const raw  = snap.exists() ? snap.val() : { records: [] };
+    const recs = fbToArray(raw.records);
+    recs.push(payload);
+    await db.ref('records').set({ records: recs });
     return { success: true };
   }
   if (action === 'update_record') {
     const { recordId, updates } = payload;
     const snap = await db.ref('records').get();
-    const data = snap.exists() ? snap.val() : { records: [] };
-    const idx  = data.records.findIndex(r => r.id === recordId);
+    const raw  = snap.exists() ? snap.val() : { records: [] };
+    const recs = fbToArray(raw.records);
+    const idx  = recs.findIndex(r => r.id === recordId);
     if (idx === -1) throw new Error('Registro no encontrado');
-    if (updates.verifiedBy && updates.verifiedBy === data.records[idx].memberId) {
+    if (updates.verifiedBy && updates.verifiedBy === recs[idx].memberId) {
       throw new Error('No puedes verificar tu propio registro');
     }
-    data.records[idx] = { ...data.records[idx], ...updates };
-    await db.ref('records').set(data);
+    recs[idx] = { ...recs[idx], ...updates };
+    await db.ref('records').set({ records: recs });
     return { success: true };
   }
   if (action === 'add_payment') {
     const snap = await db.ref('payments').get();
-    const data = snap.exists() ? snap.val() : { payments: [] };
-    data.payments.push(payload);
-    await db.ref('payments').set(data);
+    const raw  = snap.exists() ? snap.val() : { payments: [] };
+    const pays = fbToArray(raw.payments);
+    pays.push(payload);
+    await db.ref('payments').set({ payments: pays });
     return { success: true };
   }
   if (action === 'delete_record') {
     const snap = await db.ref('records').get();
-    const data = snap.exists() ? snap.val() : { records: [] };
-    const idx  = data.records.findIndex(r => r.id === payload.recordId);
+    const raw  = snap.exists() ? snap.val() : { records: [] };
+    const recs = fbToArray(raw.records);
+    const idx  = recs.findIndex(r => r.id === payload.recordId);
     if (idx === -1) throw new Error('Registro no encontrado');
-    if (data.records[idx].memberId !== payload.memberId) throw new Error('No puedes eliminar el registro de otro colaborador');
-    if (data.records[idx].status !== 'pending') throw new Error('Solo se pueden eliminar registros pendientes');
-    data.records.splice(idx, 1);
-    await db.ref('records').set(data);
+    if (recs[idx].memberId !== payload.memberId) throw new Error('No puedes eliminar el registro de otro colaborador');
+    if (recs[idx].status !== 'pending') throw new Error('Solo se pueden eliminar registros pendientes');
+    recs.splice(idx, 1);
+    await db.ref('records').set({ records: recs });
     return { success: true };
   }
   if (action === 'update_team') {
@@ -230,18 +239,13 @@ function switchTab(tabId) {
 // ══════════════════════════════════════════════════════════
 //  LOAD ALL DATA
 // ══════════════════════════════════════════════════════════
-function toArray(val) {
-  if (!val) return [];
-  return Array.isArray(val) ? val : Object.values(val);
-}
-
 async function loadAllData() {
   const [teamData, recordsData, paymentsData] = await Promise.all([
     fetchTeam(), fetchRecords(), fetchPayments()
   ]);
   APP.team     = teamData;
-  APP.records  = toArray(recordsData.records);
-  APP.payments = toArray(paymentsData.payments);
+  APP.records  = fbToArray(recordsData.records);
+  APP.payments = fbToArray(paymentsData.payments);
 }
 
 async function refreshData() {
@@ -825,7 +829,7 @@ let _recordsListener = null;
 function startRecordsListener() {
   if (_recordsListener) db.ref('records').off('value', _recordsListener);
   _recordsListener = snap => {
-    const fresh = toArray(snap.exists() ? snap.val().records : null);
+    const fresh = fbToArray(snap.exists() ? snap.val().records : null);
     if (JSON.stringify(fresh) === JSON.stringify(APP.records)) return;
     APP.records = fresh;
     switchTab(APP.activeTab);

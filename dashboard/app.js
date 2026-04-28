@@ -586,9 +586,26 @@ async function deleteOwnRecord(recordId) {
 // ══════════════════════════════════════════════════════════
 //  VERIFY MODAL
 // ══════════════════════════════════════════════════════════
-function openVerifyModal(recordId) {
-  const record = APP.records.find(r => r.id === recordId);
-  if (!record) return;
+async function openVerifyModal(recordId) {
+  let record = APP.records.find(r => r.id === recordId);
+
+  if (!record) {
+    // APP.records may be momentarily stale — re-fetch from Firebase
+    try {
+      const snap = await db.ref('records').get();
+      const recs = fbToArray(snap.exists() ? snap.val().records : null);
+      APP.records = recs;
+      record = recs.find(r => r.id === recordId);
+    } catch (err) {
+      showToast('Error al cargar el registro', true);
+      return;
+    }
+  }
+
+  if (!record) {
+    showToast('Registro no encontrado. Recarga la página.', true);
+    return;
+  }
 
   APP.verifyRecordId = recordId;
 

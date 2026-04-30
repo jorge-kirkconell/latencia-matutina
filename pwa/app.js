@@ -54,7 +54,8 @@ const DEFAULT_TEAM = {
 // ── Firebase array normalizer (same as dashboard) ────────
 function fbToArray(val) {
   if (!val) return [];
-  return Array.isArray(val) ? val : Object.values(val);
+  const arr = Array.isArray(val) ? val : Object.values(val);
+  return arr.filter(item => item != null);
 }
 
 // ── Read helpers — Firebase Realtime Database ────────────

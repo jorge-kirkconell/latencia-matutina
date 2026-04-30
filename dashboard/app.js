@@ -72,7 +72,8 @@ async function fetchPayments() {
 
 function fbToArray(val) {
   if (!val) return [];
-  return Array.isArray(val) ? val : Object.values(val);
+  const arr = Array.isArray(val) ? val : Object.values(val);
+  return arr.filter(item => item != null);
 }
 
 async function writeAction(action, payload) {

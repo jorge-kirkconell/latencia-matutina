@@ -80,6 +80,8 @@ async function writeAction(action, payload) {
     const snap = await db.ref('records').get();
     const raw  = snap.exists() ? snap.val() : { records: [] };
     const recs = fbToArray(raw.records);
+    const dup  = recs.find(r => r.memberId === payload.memberId && r.date === payload.date);
+    if (dup) throw new Error('Ya registraste tu llegada para este día');
     recs.push(payload);
     await db.ref('records').set({ records: recs });
     return { success: true };
@@ -587,61 +589,64 @@ async function deleteOwnRecord(recordId) {
 //  VERIFY MODAL
 // ══════════════════════════════════════════════════════════
 async function openVerifyModal(recordId) {
-  let record = APP.records.find(r => r.id === recordId);
+  try {
+    let record = APP.records.find(r => r.id === recordId);
 
-  if (!record) {
-    // APP.records may be momentarily stale — re-fetch from Firebase
-    try {
+    if (!record) {
       const snap = await db.ref('records').get();
       const recs = fbToArray(snap.exists() ? snap.val().records : null);
       APP.records = recs;
       record = recs.find(r => r.id === recordId);
-    } catch (err) {
-      showToast('Error al cargar el registro', true);
+    }
+
+    if (!record) {
+      showToast('Registro no encontrado. Recarga la página.', true);
       return;
     }
+
+    if (record.memberId === APP.member.id) {
+      showToast('No puedes verificar tu propio registro', true);
+      return;
+    }
+
+    APP.verifyRecordId = recordId;
+
+    const sevLabel = record.isForceMajeure
+      ? 'Fuerza Mayor'
+      : (record.severity ? `Sev ${record.severity}` : 'A tiempo');
+    const penaltyLabel = record.isForceMajeure ? 'L0' : `L${record.penalty ?? 0}`;
+
+    const info = document.getElementById('verify-record-info');
+    info.innerHTML = `
+      <div class="vinfo-row">
+        <span class="label"><i data-lucide="user"></i> Colaborador</span>
+        <span class="value">${record.memberName}</span>
+      </div>
+      <div class="vinfo-row">
+        <span class="label"><i data-lucide="clock"></i> Hora declarada</span>
+        <span class="value">${record.claimedArrivalTime ? fmt12(record.claimedArrivalTime) : '—'}</span>
+      </div>
+      <div class="vinfo-row">
+        <span class="label"><i data-lucide="send"></i> Enviado a las</span>
+        <span class="value">${record.submittedAt ? fmt12(record.submittedAt.slice(11,16)) : '—'}</span>
+      </div>
+      <div class="vinfo-row">
+        <span class="label"><i data-lucide="alert-triangle"></i> Severidad</span>
+        <span class="value">${sevLabel}</span>
+      </div>
+      <div class="vinfo-row">
+        <span class="label"><i data-lucide="coins"></i> Castigo</span>
+        <span class="value">${penaltyLabel}</span>
+      </div>
+      ${record.isForceMajeure && record.forceMajeureReason ? `<div class="vinfo-row"><span class="label"><i data-lucide="shield-check"></i> Motivo FM</span><span class="value">${record.forceMajeureReason}</span></div>` : ''}
+    `;
+
+    document.getElementById('verify-note').value = '';
+    openModal('modal-verify');
+  } catch(err) {
+    showToast('Error al abrir verificación: ' + err.message, true);
+    console.error('openVerifyModal error:', err);
   }
-
-  if (!record) {
-    showToast('Registro no encontrado. Recarga la página.', true);
-    return;
-  }
-
-  APP.verifyRecordId = recordId;
-
-  if (record.memberId === APP.member.id) {
-    showToast('No puedes verificar tu propio registro', true);
-    return;
-  }
-
-  const info = document.getElementById('verify-record-info');
-  const p    = calculatePenalty(record.claimedArrivalTime);
-  info.innerHTML = `
-    <div class="vinfo-row">
-      <span class="label"><i data-lucide="user"></i> Colaborador</span>
-      <span class="value">${record.memberName}</span>
-    </div>
-    <div class="vinfo-row">
-      <span class="label"><i data-lucide="clock"></i> Hora declarada</span>
-      <span class="value">${fmt12(record.claimedArrivalTime)}</span>
-    </div>
-    <div class="vinfo-row">
-      <span class="label"><i data-lucide="send"></i> Enviado a las</span>
-      <span class="value">${record.submittedAt ? fmt12(record.submittedAt.slice(11,16)) : '—'}</span>
-    </div>
-    <div class="vinfo-row">
-      <span class="label"><i data-lucide="alert-triangle"></i> Severidad</span>
-      <span class="value">${record.isForceMajeure ? 'Fuerza Mayor' : (record.severity ? `Sev ${record.severity}` : 'A tiempo')}</span>
-    </div>
-    <div class="vinfo-row">
-      <span class="label"><i data-lucide="coins"></i> Castigo</span>
-      <span class="value">${record.isForceMajeure ? 'L0' : `L${record.penalty}`}</span>
-    </div>
-    ${record.isForceMajeure ? `<div class="vinfo-row"><span class="label"><i data-lucide="shield-check"></i> Motivo FM</span><span class="value">${record.forceMajeureReason}</span></div>` : ''}
-  `;
-
-  document.getElementById('verify-note').value = '';
-  openModal('modal-verify');
 }
 
 async function doVerify(status) {

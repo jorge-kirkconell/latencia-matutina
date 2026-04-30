@@ -51,6 +51,12 @@ const DEFAULT_TEAM = {
   ]
 };
 
+// ── Firebase array normalizer (same as dashboard) ────────
+function fbToArray(val) {
+  if (!val) return [];
+  return Array.isArray(val) ? val : Object.values(val);
+}
+
 // ── Read helpers — Firebase Realtime Database ────────────
 async function readTeam() {
   const snap = await db.ref('team').get();
@@ -59,47 +65,55 @@ async function readTeam() {
 
 async function readRecords() {
   const snap = await db.ref('records').get();
-  return snap.exists() ? snap.val() : { records: [] };
+  if (!snap.exists()) return { records: [] };
+  const raw = snap.val();
+  return { records: fbToArray(raw.records) };
 }
 
 // ── Write helper — Firebase Realtime Database ────────────
 async function writeAction(action, payload) {
   if (action === 'add_record') {
     const snap = await db.ref('records').get();
-    const data = snap.exists() ? snap.val() : { records: [] };
-    data.records.push(payload);
-    await db.ref('records').set(data);
+    const raw  = snap.exists() ? snap.val() : { records: [] };
+    const recs = fbToArray(raw.records);
+    const dup  = recs.find(r => r.memberId === payload.memberId && r.date === payload.date);
+    if (dup) throw new Error('Ya registraste tu llegada para este día');
+    recs.push(payload);
+    await db.ref('records').set({ records: recs });
     return { success: true };
   }
   if (action === 'update_record') {
     const snap = await db.ref('records').get();
-    const data = snap.exists() ? snap.val() : { records: [] };
-    const idx  = data.records.findIndex(r => r.id === payload.recordId);
+    const raw  = snap.exists() ? snap.val() : { records: [] };
+    const recs = fbToArray(raw.records);
+    const idx  = recs.findIndex(r => r.id === payload.recordId);
     if (idx !== -1) {
-      if (payload.updates.verifiedBy === data.records[idx].memberId) {
+      if (payload.updates.verifiedBy === recs[idx].memberId) {
         throw new Error('No puedes verificar tu propio registro');
       }
-      data.records[idx] = { ...data.records[idx], ...payload.updates };
-      await db.ref('records').set(data);
+      recs[idx] = { ...recs[idx], ...payload.updates };
+      await db.ref('records').set({ records: recs });
     }
     return { success: true };
   }
   if (action === 'add_payment') {
     const snap = await db.ref('payments').get();
-    const data = snap.exists() ? snap.val() : { payments: [] };
-    data.payments.push(payload);
-    await db.ref('payments').set(data);
+    const raw  = snap.exists() ? snap.val() : { payments: [] };
+    const pays = fbToArray(raw.payments);
+    pays.push(payload);
+    await db.ref('payments').set({ payments: pays });
     return { success: true };
   }
   if (action === 'delete_record') {
     const snap = await db.ref('records').get();
-    const data = snap.exists() ? snap.val() : { records: [] };
-    const idx  = data.records.findIndex(r => r.id === payload.recordId);
+    const raw  = snap.exists() ? snap.val() : { records: [] };
+    const recs = fbToArray(raw.records);
+    const idx  = recs.findIndex(r => r.id === payload.recordId);
     if (idx === -1) throw new Error('Registro no encontrado');
-    if (data.records[idx].memberId !== payload.memberId) throw new Error('No puedes eliminar el registro de otro colaborador');
-    if (data.records[idx].status !== 'pending') throw new Error('Solo se pueden eliminar registros pendientes');
-    data.records.splice(idx, 1);
-    await db.ref('records').set(data);
+    if (recs[idx].memberId !== payload.memberId) throw new Error('No puedes eliminar el registro de otro colaborador');
+    if (recs[idx].status !== 'pending') throw new Error('Solo se pueden eliminar registros pendientes');
+    recs.splice(idx, 1);
+    await db.ref('records').set({ records: recs });
     return { success: true };
   }
   throw new Error(`Acción desconocida: ${action}`);

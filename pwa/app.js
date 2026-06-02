@@ -64,6 +64,12 @@ async function readTeam() {
   return snap.exists() ? snap.val() : DEFAULT_TEAM;
 }
 
+async function readPayments() {
+  const snap = await db.ref('payments').get();
+  if (!snap.exists()) return [];
+  return fbToArray(snap.val().payments);
+}
+
 async function readRecords() {
   const snap = await db.ref('records').get();
   if (!snap.exists()) return { records: [] };
@@ -147,6 +153,12 @@ function uuid() {
 
 function initials(name) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('es-HN', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 function formatTime12(timeStr) {
@@ -541,6 +553,76 @@ function showResultScreen(record, penalty, fmOn, sentAt) {
 }
 
 // ══════════════════════════════════════════════════════════
+//  HISTORY SCREEN
+// ══════════════════════════════════════════════════════════
+async function loadHistoryScreen() {
+  const m = STATE.member;
+  document.getElementById('history-member-name').textContent = m.name;
+
+  setLoading(true, 'Cargando historial...');
+  try {
+    const [{ records }, payments] = await Promise.all([readRecords(), readPayments()]);
+
+    const myRecords    = records.filter(r => r.memberId === m.id).sort((a,b) => b.date.localeCompare(a.date));
+    const verifiedRecs = myRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && (r.severity || r.isNoShow));
+    const totalPenalty = verifiedRecs.reduce((s, r) => s + (r.penalty || 0), 0);
+    const totalPaid    = payments.filter(p => p.debtorId === m.id).reduce((s, p) => s + p.amount, 0);
+    const saldo        = totalPenalty - totalPaid;
+    const incidents    = verifiedRecs.length;
+
+    document.getElementById('hist-summary-grid').innerHTML = `
+      <div class="hist-stat-card">
+        <span class="hsc-label">Incidentes</span>
+        <span class="hsc-value">${incidents}</span>
+      </div>
+      <div class="hist-stat-card">
+        <span class="hsc-label">Castigos</span>
+        <span class="hsc-value red">L${totalPenalty}</span>
+      </div>
+      <div class="hist-stat-card">
+        <span class="hsc-label">Pagado</span>
+        <span class="hsc-value green">L${totalPaid}</span>
+      </div>
+      <div class="hist-stat-card ${saldo > 0 ? 'highlight' : ''}">
+        <span class="hsc-label">Saldo</span>
+        <span class="hsc-value ${saldo > 0 ? 'red' : 'green'}">L${Math.abs(saldo)}${saldo < 0 ? ' CR' : ''}</span>
+      </div>
+    `;
+
+    const listEl = document.getElementById('hist-records-list');
+    if (!myRecords.length) {
+      listEl.innerHTML = `<div class="hist-empty"><i data-lucide="inbox"></i><p>Sin registros aún</p></div>`;
+    } else {
+      const SEV_LABELS = { ontime:'A tiempo', sev3:'Sev 3', sev2:'Sev 2', sev1:'Sev 1', fm:'Fuerza Mayor', noshow:'Falta' };
+      listEl.innerHTML = myRecords.map(r => {
+        const type = r.isNoShow ? 'noshow' : (r.isForceMajeure ? 'fm' : (r.severity ? `sev${r.severity}` : 'ontime'));
+        const statusLabel = { pending:'Pendiente', verified:'Verificado', rejected:'Rechazado' }[r.status] || r.status;
+        return `<div class="hist-record-card">
+          <div class="hrc-left">
+            <span class="hrc-date">${fmtDate(r.date)}</span>
+            <span class="hrc-time">${r.claimedArrivalTime ? formatTime12(r.claimedArrivalTime) : '—'}</span>
+          </div>
+          <div class="hrc-center">
+            <span class="hrc-type ${type}">${SEV_LABELS[type] || type}</span>
+            <span class="hrc-status ${r.status}">${statusLabel}</span>
+          </div>
+          <div class="hrc-right">
+            <span class="hrc-penalty ${r.penalty ? 'red' : ''}">${r.penalty ? `L${r.penalty}` : '—'}</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    lucide.createIcons();
+    showScreen('screen-history');
+  } catch (err) {
+    alert('Error al cargar historial: ' + err.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
 //  LOADING
 // ══════════════════════════════════════════════════════════
 function setLoading(on, text = '') {
@@ -625,6 +707,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Register button
   document.getElementById('btn-register').addEventListener('click', handleRegister);
+
+  // History screen
+  document.getElementById('btn-view-history').addEventListener('click', loadHistoryScreen);
+  document.getElementById('btn-back-history').addEventListener('click', () => loadMainScreen());
 
   // Retroactive section toggle
   document.getElementById('btn-show-retro').addEventListener('click', () => {

@@ -120,6 +120,70 @@ html, body {
   font-weight: 500;
 }
 
+/* ── History Screen ──────────────────────────────────────── */
+.hist-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.hist-stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.hist-stat-card.highlight { border-color: var(--red); background: rgba(239,68,68,0.05); }
+.hsc-label { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
+.hsc-value { font-size: 20px; font-weight: 800; color: var(--text-1); }
+.hsc-value.red   { color: #ef4444; }
+.hsc-value.green { color: #10b981; }
+
+.hist-record-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+}
+.hrc-left   { display: flex; flex-direction: column; gap: 2px; min-width: 90px; }
+.hrc-date   { font-size: 11px; font-weight: 700; color: var(--text-2); }
+.hrc-time   { font-size: 14px; font-weight: 700; color: var(--text-1); }
+.hrc-center { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.hrc-right  { display: flex; flex-direction: column; align-items: flex-end; }
+.hrc-penalty { font-size: 14px; font-weight: 700; color: var(--text-3); }
+.hrc-penalty.red { color: #ef4444; }
+
+.hrc-type {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px;
+  width: fit-content;
+}
+.hrc-type.ontime { background: rgba(16,185,129,0.15); color: #10b981; }
+.hrc-type.sev3   { background: rgba(245,158,11,0.15);  color: #f59e0b; }
+.hrc-type.sev2   { background: rgba(239,68,68,0.15);   color: #ef4444; }
+.hrc-type.sev1   { background: rgba(255,34,34,0.12);   color: #ff5555; }
+.hrc-type.fm     { background: rgba(59,130,246,0.15);  color: #3b82f6; }
+.hrc-type.noshow { background: rgba(139,92,246,0.15);  color: #8b5cf6; }
+
+.hrc-status { font-size: 10px; font-weight: 600; color: var(--text-3); }
+.hrc-status.verified { color: #10b981; }
+.hrc-status.rejected { color: #ef4444; }
+
+.hist-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 40px 0; color: var(--text-3); font-size: 14px;
+}
+.hist-empty svg { width: 32px; height: 32px; }
+
+#hist-records-list { display: flex; flex-direction: column; gap: 8px; }
+
 .screen-footer {
   text-align: center;
   font-size: 11px;

@@ -149,6 +149,12 @@ function fmtDate(dateStr) {
   return d.toLocaleDateString('es-HN', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+function fmtSubmittedAt(isoStr) {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  return fmt12(`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`);
+}
+
 function fmtDateLong(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr + 'T00:00:00');
@@ -226,16 +232,17 @@ function switchTab(tabId) {
   document.getElementById(`tab-${tabId}`)?.classList.add('active');
   document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
 
-  const titles = { today: 'Hoy', month: 'Mes', debts: 'Deudas', history: 'Historial', admin: 'Admin' };
+  const titles = { today: 'Hoy', month: 'Mes', debts: 'Deudas', history: 'Historial', resumen: 'Mi Resumen', admin: 'Admin' };
   document.getElementById('topbar-title').textContent = titles[tabId] || '';
 
   // Refresh that tab's data
   switch(tabId) {
-    case 'today':   renderToday();   break;
-    case 'month':   renderMonth();   break;
-    case 'debts':   renderDebts();   break;
-    case 'history': renderHistory(); break;
-    case 'admin':   renderAdmin();   break;
+    case 'today':   renderToday();     break;
+    case 'month':   renderMonth();     break;
+    case 'debts':   renderDebts();     break;
+    case 'history': renderHistory();   break;
+    case 'resumen': renderMyResumen(); break;
+    case 'admin':   renderAdmin();     break;
   }
 
   // Close mobile sidebar
@@ -315,7 +322,7 @@ function renderToday() {
     const isSelf     = r.memberId === APP.member.id;
     const canVerify  = !isSelf && r.status === 'pending';
     const nameClass  = isSelf ? 'cell-name cell-self' : 'cell-name';
-    const sentTime   = r.submittedAt ? fmt12(r.submittedAt.slice(11,16)) : '—';
+    const sentTime   = fmtSubmittedAt(r.submittedAt);
 
     return `<tr>
       <td>
@@ -462,21 +469,14 @@ function renderNoShowsSection() {
     if (missingDays.length) noShows.push({ member: m, dates: missingDays });
   }
 
-  window._pendingNoShows = noShows;
-
   const container = document.getElementById('noshow-section');
-  const btnApply  = document.getElementById('btn-apply-noshows');
   if (!container) return;
 
   if (!noShows.length) {
     container.innerHTML = `<p style="padding:16px;text-align:center;color:var(--green);font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="check-circle-2"></i> Sin días pendientes este mes</p>`;
-    btnApply?.classList.add('hidden');
     lucide.createIcons();
     return;
   }
-
-  if (APP.member?.role === 'admin') btnApply?.classList.remove('hidden');
-  else btnApply?.classList.add('hidden');
 
   container.innerHTML = noShows.map(({ member, dates }) => {
     const total = dates.length * NO_SHOW_PENALTY;
@@ -499,52 +499,46 @@ function renderNoShowsSection() {
   lucide.createIcons();
 }
 
-async function applyNoShowPenalties() {
-  const noShows = window._pendingNoShows;
-  if (!noShows?.length) return;
-
-  const totalCount = noShows.reduce((s, ns) => s + ns.dates.length, 0);
-  const totalAmt   = totalCount * NO_SHOW_PENALTY;
-  if (!confirm(`¿Aplicar penalización de L${NO_SHOW_PENALTY} por cada uno de los ${totalCount} días sin registro? Total: L${totalAmt}. Esta acción no se puede deshacer.`)) return;
+async function autoApplyNoShows() {
+  if (APP.member?.role !== 'admin') return;
+  const ym = currentYearMonth();
+  const workingDays = getWorkingDaysBefore(ym);
+  const members = APP.team?.members?.filter(m => m.active && m.role !== 'admin') || [];
 
   const now = new Date().toISOString();
-  const newRecords = [];
-  for (const { member, dates } of noShows) {
-    for (const dateStr of dates) {
-      newRecords.push({
-        id:                 uuid(),
-        memberId:           member.id,
-        memberName:         member.name,
-        date:               dateStr,
-        claimedArrivalTime: null,
-        submittedAt:        now,
-        minutesLate:        0,
-        severity:           null,
-        penalty:            NO_SHOW_PENALTY,
-        coffeeRequired:     false,
-        isForceMajeure:     false,
-        isNoShow:           true,
-        status:             'verified',
-        verifiedBy:         APP.member.id,
-        verifiedAt:         now,
-        verifierName:       APP.member.name,
-      });
+  const toAdd = [];
+
+  for (const m of members) {
+    for (const dateStr of workingDays) {
+      if (!APP.records.find(r => r.memberId === m.id && r.date === dateStr)) {
+        toAdd.push({
+          id:                 uuid(),
+          memberId:           m.id,
+          memberName:         m.name,
+          date:               dateStr,
+          claimedArrivalTime: null,
+          submittedAt:        now,
+          minutesLate:        0,
+          severity:           null,
+          penalty:            NO_SHOW_PENALTY,
+          coffeeRequired:     false,
+          isForceMajeure:     false,
+          isNoShow:           true,
+          status:             'verified',
+          verifiedBy:         APP.member.id,
+          verifiedAt:         now,
+          verifierName:       APP.member.name,
+        });
+      }
     }
   }
 
-  try {
-    const snap = await db.ref('records').get();
-    const raw  = snap.exists() ? snap.val() : { records: [] };
-    const recs = fbToArray(raw.records);
-    for (const nr of newRecords) {
-      if (!recs.find(r => r.memberId === nr.memberId && r.date === nr.date)) recs.push(nr);
-    }
-    await db.ref('records').set({ records: recs });
-    showToast(`${newRecords.length} penalización(es) de falta aplicadas · L${totalAmt} al fondo`);
-    await refreshData();
-  } catch (err) {
-    showToast('Error al aplicar penalizaciones: ' + err.message, true);
-  }
+  if (!toAdd.length) return;
+
+  const updatedRecs = [...APP.records, ...toAdd];
+  await db.ref('records').set({ records: updatedRecs });
+  APP.records = updatedRecs;
+  showToast(`${toAdd.length} falta(s) aplicadas automáticamente · L${toAdd.length * NO_SHOW_PENALTY} al fondo`);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -846,7 +840,7 @@ async function openVerifyModal(recordId) {
       </div>
       <div class="vinfo-row">
         <span class="label"><i data-lucide="send"></i> Enviado a las</span>
-        <span class="value">${record.submittedAt ? fmt12(record.submittedAt.slice(11,16)) : '—'}</span>
+        <span class="value">${fmtSubmittedAt(record.submittedAt)}</span>
       </div>
       <div class="vinfo-row">
         <span class="label"><i data-lucide="alert-triangle"></i> Severidad</span>
@@ -1033,6 +1027,56 @@ async function saveNewMember() {
   closeModal('modal-add-member');
   showToast(`${name} agregado al equipo. Token: ${token}`);
   await refreshData();
+}
+
+// ══════════════════════════════════════════════════════════
+//  TAB: MY RESUME
+// ══════════════════════════════════════════════════════════
+function renderMyResumen() {
+  const member = APP.member;
+  document.getElementById('myresume-name').textContent = member.name;
+
+  const myRecords    = APP.records.filter(r => r.memberId === member.id).sort((a,b) => b.date.localeCompare(a.date));
+  const verifiedRecs = myRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && (r.severity || r.isNoShow));
+  const totalPenalty = verifiedRecs.reduce((s, r) => s + (r.penalty || 0), 0);
+  const totalPaid    = APP.payments.filter(p => p.debtorId === member.id).reduce((s, p) => s + p.amount, 0);
+  const saldo        = totalPenalty - totalPaid;
+  const incidents    = verifiedRecs.length;
+  const totalMin     = verifiedRecs.filter(r => !r.isNoShow).reduce((s, r) => s + (r.minutesLate || 0), 0);
+
+  document.getElementById('myresume-incidents').textContent = incidents;
+  document.getElementById('myresume-minutes').textContent   = `${totalMin} min`;
+  document.getElementById('myresume-penalty').textContent   = `L${totalPenalty}`;
+  document.getElementById('myresume-paid').textContent      = `L${totalPaid}`;
+
+  const saldoEl = document.getElementById('myresume-saldo');
+  saldoEl.textContent = `L${Math.abs(saldo)}${saldo < 0 ? ' CR' : ''}`;
+  saldoEl.className   = `myresume-stat-value ${saldo > 0 ? 'money-red' : 'money-green'}`;
+
+  const tbody = document.getElementById('myresume-tbody');
+  if (!myRecords.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-row"><i data-lucide="inbox"></i> Sin registros</td></tr>`;
+    lucide.createIcons();
+    return;
+  }
+
+  tbody.innerHTML = myRecords.map(r => {
+    const canDelete = r.status === 'pending' && !r.isNoShow;
+    const hourDisplay = r.claimedArrivalTime ? fmt12(r.claimedArrivalTime) : '—';
+    const penDisplay  = (r.isForceMajeure || (!r.penalty && !r.isNoShow))
+      ? `<span style="color:var(--text-3)">—</span>`
+      : moneyCell(r.penalty);
+    return `<tr>
+      <td><span style="font-size:12px;font-weight:600;color:var(--text-2)">${fmtDate(r.date)}</span></td>
+      <td><strong>${hourDisplay}</strong></td>
+      <td>${sevBadge(r)}</td>
+      <td>${penDisplay}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td>${canDelete ? `<button class="btn btn-sm btn-danger" onclick="deleteOwnRecord('${r.id}')"><i data-lucide="trash-2"></i></button>` : ''}</td>
+    </tr>`;
+  }).join('');
+
+  lucide.createIcons();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1248,9 +1292,12 @@ async function startApp(member) {
   document.getElementById('screen-login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
 
-  // Load data and render
+  // Load data, auto-apply no-shows for admins, then render
   await loadAllData();
-  const VALID_TABS = ['today', 'month', 'debts', 'history', 'admin'];
+  if (member.role === 'admin') {
+    try { await autoApplyNoShows(); } catch (_) {}
+  }
+  const VALID_TABS = ['today', 'month', 'debts', 'history', 'resumen', 'admin'];
   const hashTab = window.location.hash.replace('#', '');
   switchTab(VALID_TABS.includes(hashTab) ? hashTab : 'today');
   startRecordsListener();
@@ -1378,8 +1425,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-retro-register').addEventListener('click', handleRetroRegister);
 
-  // Apply no-shows
-  document.getElementById('btn-apply-noshows').addEventListener('click', applyNoShowPenalties);
 
   // Arrival widget events
   document.getElementById('aw-arrival-time').addEventListener('input', () => {

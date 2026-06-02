@@ -72,6 +72,9 @@
       <button class="nav-item" data-tab="history">
         <i data-lucide="history"></i><span>Historial</span>
       </button>
+      <button class="nav-item" data-tab="resumen">
+        <i data-lucide="user-circle-2"></i><span>Mi Resumen</span>
+      </button>
       <button class="nav-item" data-tab="admin" id="nav-admin" style="display:none">
         <i data-lucide="shield-check"></i><span>Admin</span>
       </button>
@@ -323,9 +326,6 @@
         <div class="card-title-row">
           <i data-lucide="user-x"></i>
           <span>Días sin registro — penalización L25/día</span>
-          <button id="btn-apply-noshows" class="btn btn-sm btn-danger hidden" style="margin-left:auto">
-            <i data-lucide="zap"></i> Aplicar penalizaciones
-          </button>
         </div>
         <div id="noshow-section">
           <p class="empty-row" style="padding:16px;text-align:center"><i data-lucide="loader-2" class="spin"></i></p>
@@ -401,6 +401,65 @@
             </thead>
             <tbody id="history-tbody">
               <tr><td colspan="8" class="empty-row"><i data-lucide="loader-2" class="spin"></i></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TAB: MY RESUME ════════════════════════════════ -->
+    <section id="tab-resumen" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h2 class="page-title">Mi Resumen</h2>
+          <p class="page-sub" id="myresume-name">—</p>
+        </div>
+      </div>
+
+      <!-- Summary stats -->
+      <div class="myresume-stats-row">
+        <div class="myresume-stat-card">
+          <span class="myresume-stat-label">Incidentes</span>
+          <span class="myresume-stat-value" id="myresume-incidents">0</span>
+        </div>
+        <div class="myresume-stat-card">
+          <span class="myresume-stat-label">Min. tarde</span>
+          <span class="myresume-stat-value" id="myresume-minutes">0 min</span>
+        </div>
+        <div class="myresume-stat-card">
+          <span class="myresume-stat-label">Castigos</span>
+          <span class="myresume-stat-value money-red" id="myresume-penalty">L0</span>
+        </div>
+        <div class="myresume-stat-card">
+          <span class="myresume-stat-label">Pagado</span>
+          <span class="myresume-stat-value money-green" id="myresume-paid">L0</span>
+        </div>
+        <div class="myresume-stat-card">
+          <span class="myresume-stat-label">Saldo</span>
+          <span class="myresume-stat-value" id="myresume-saldo">L0</span>
+        </div>
+      </div>
+
+      <!-- Records table -->
+      <div class="card">
+        <div class="card-title-row">
+          <i data-lucide="history"></i>
+          <span>Mis registros</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora declarada</th>
+                <th>Tipo</th>
+                <th>Castigo</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="myresume-tbody">
+              <tr><td colspan="6" class="empty-row"><i data-lucide="loader-2" class="spin"></i></td></tr>
             </tbody>
           </table>
         </div>

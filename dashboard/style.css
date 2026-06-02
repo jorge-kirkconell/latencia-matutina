@@ -1122,6 +1122,30 @@ button { font-family: var(--font); }
 .aw-registered-banner strong { display: block; font-size: 14px; font-weight: 700; color: var(--text-1); margin-bottom: 2px; }
 .aw-registered-banner span:not(.status-badge) { font-size: 13px; color: var(--text-2); }
 
+/* Mi Resumen stats */
+.myresume-stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 4px;
+}
+@media (max-width: 700px) {
+  .myresume-stats-row { grid-template-columns: repeat(2, 1fr); }
+  .myresume-stats-row .myresume-stat-card:first-child { grid-column: 1 / -1; }
+}
+.myresume-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.myresume-stat-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
+.myresume-stat-value { font-size: 22px; font-weight: 800; color: var(--text-1); }
+
 /* Retroactive link row */
 .retro-link-row {
   display: flex;

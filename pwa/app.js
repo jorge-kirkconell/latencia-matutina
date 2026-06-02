@@ -364,6 +364,18 @@ async function handleRetroRegister() {
   if (!timeVal) return alert('Ingresa la hora de llegada.');
   if (fmOn && !fmReason) return alert('Describe el motivo de fuerza mayor.');
 
+  // Verify no existing record for that date before attempting write
+  setLoading(true, 'Verificando...');
+  try {
+    const { records } = await readRecords();
+    const existing = records.find(r => r.memberId === STATE.member.id && r.date === dateVal);
+    if (existing) {
+      alert('Ya existe un registro para ese día.\nNo se puede modificar ni reemplazar.');
+      return;
+    }
+  } catch (_) { /* allow — writeAction will catch duplicates */ }
+  finally { setLoading(false); }
+
   const penalty = calculatePenalty(timeVal);
   const now     = new Date();
   const [y, m, d] = dateVal.split('-');

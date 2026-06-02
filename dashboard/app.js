@@ -599,6 +599,12 @@ async function handleRetroRegister() {
   if (!timeVal)            { showToast('Ingresa la hora de llegada', true); return; }
   if (fmOn && !fmReason)  { showToast('Describe el motivo de fuerza mayor', true); return; }
 
+  const existing = APP.records.find(r => r.memberId === APP.member.id && r.date === dateVal);
+  if (existing) {
+    showToast('Ya existe un registro para ese día — no se puede modificar ni reemplazar', true);
+    return;
+  }
+
   const penalty = calculatePenalty(timeVal);
   const now     = new Date();
 

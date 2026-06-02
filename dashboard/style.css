@@ -469,6 +469,7 @@ button { font-family: var(--font); }
 .sev-badge.sev2   { background: rgba(239,68,68,0.12);  color: var(--red); }
 .sev-badge.sev1   { background: rgba(255,34,34,0.12);  color: #ff5555; }
 .sev-badge.fm     { background: rgba(59,130,246,0.12); color: var(--blue); }
+.sev-badge.noshow { background: rgba(139,92,246,0.12); color: var(--purple); }
 
 /* Status badges */
 .status-badge {
@@ -1120,4 +1121,55 @@ button { font-family: var(--font); }
 .aw-registered-banner > div { flex: 1; }
 .aw-registered-banner strong { display: block; font-size: 14px; font-weight: 700; color: var(--text-1); margin-bottom: 2px; }
 .aw-registered-banner span:not(.status-badge) { font-size: 13px; color: var(--text-2); }
+
+/* Retroactive link row */
+.retro-link-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px 10px;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+  text-underline-offset: 3px;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: color var(--trans), text-decoration-color var(--trans);
+  padding: 0;
+}
+.link-btn:hover { color: var(--blue); text-decoration-color: var(--blue); }
+.link-btn svg { width: 12px; height: 12px; }
+
+/* No-show section */
+.noshow-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.noshow-row:last-child { border-bottom: none; }
+.noshow-dates { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.noshow-date-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(139,92,246,0.1);
+  color: var(--purple);
+  border: 1px solid rgba(139,92,246,0.2);
+}
+.noshow-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 80px;
+}
 

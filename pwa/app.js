@@ -316,6 +316,95 @@ function updatePenaltyPreview() {
 }
 
 // ══════════════════════════════════════════════════════════
+//  RETROACTIVE REGISTRATION
+// ══════════════════════════════════════════════════════════
+function initRetroSection() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const maxDate  = yesterday.toLocaleDateString('sv-SE');
+  const now      = new Date();
+  const firstDay = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+
+  const retroDate  = document.getElementById('retro-date');
+  retroDate.max    = maxDate;
+  retroDate.min    = firstDay;
+  retroDate.value  = maxDate;
+
+  document.getElementById('retro-time').value = '08:00';
+  document.getElementById('retro-fm-toggle').checked = false;
+  document.getElementById('retro-fm-reason-field').classList.add('hidden');
+  document.getElementById('retro-fm-reason').value = '';
+  updateRetroPenaltyPreview();
+}
+
+function updateRetroPenaltyPreview() {
+  const timeVal = document.getElementById('retro-time')?.value;
+  const fmOn    = document.getElementById('retro-fm-toggle')?.checked;
+  const preview = document.getElementById('retro-penalty-preview');
+  const wrap    = document.getElementById('retro-preview-wrap');
+  const label   = document.getElementById('retro-preview-label');
+  const amount  = document.getElementById('retro-preview-amount');
+  if (!timeVal) { preview?.classList.add('hidden'); return; }
+  const result = calculatePenalty(timeVal);
+  preview.classList.remove('hidden');
+  wrap.className    = 'preview-sev-icon ' + (fmOn ? 'fm' : result.type);
+  wrap.innerHTML    = `<i data-lucide="${fmOn ? 'shield-check' : SEV_ICONS[result.type]}"></i>`;
+  label.textContent = fmOn ? 'Fuerza Mayor — Sin castigo' : result.label;
+  amount.textContent= fmOn ? 'L0' : `L${result.penalty}`;
+  lucide.createIcons();
+}
+
+async function handleRetroRegister() {
+  const dateVal  = document.getElementById('retro-date').value;
+  const timeVal  = document.getElementById('retro-time').value;
+  const fmOn     = document.getElementById('retro-fm-toggle').checked;
+  const fmReason = document.getElementById('retro-fm-reason').value.trim();
+
+  if (!dateVal || dateVal >= today()) return alert('Selecciona una fecha válida anterior a hoy.');
+  if (!timeVal) return alert('Ingresa la hora de llegada.');
+  if (fmOn && !fmReason) return alert('Describe el motivo de fuerza mayor.');
+
+  const penalty = calculatePenalty(timeVal);
+  const now     = new Date();
+  const [y, m, d] = dateVal.split('-');
+
+  const record = {
+    id:                 uuid(),
+    memberId:           STATE.member.id,
+    memberName:         STATE.member.name,
+    date:               dateVal,
+    claimedArrivalTime: timeVal,
+    submittedAt:        now.toISOString(),
+    minutesLate:        fmOn ? 0 : penalty.minutesLate,
+    severity:           fmOn ? null : penalty.severity,
+    penalty:            fmOn ? 0    : penalty.penalty,
+    coffeeRequired:     fmOn ? false : penalty.coffeeRequired,
+    isForceMajeure:     fmOn,
+    forceMajeureReason: fmReason,
+    isRetroactive:      true,
+    status:             'pending',
+    verifiedBy:         null,
+    verifiedAt:         null,
+    verifierName:       null,
+  };
+
+  const btn = document.getElementById('btn-retro-register');
+  btn.disabled = true;
+  setLoading(true, 'Enviando registro...');
+
+  try {
+    await writeAction('add_record', record);
+    document.getElementById('retro-section').classList.add('hidden');
+    alert(`Llegada del ${d}/${m}/${y} registrada.\nQueda pendiente de verificación.`);
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    setLoading(false);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
 //  DELETE / CORRECT RECORD
 // ══════════════════════════════════════════════════════════
 async function handleDeleteRecord(recordId) {
@@ -522,6 +611,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Register button
   document.getElementById('btn-register').addEventListener('click', handleRegister);
+
+  // Retroactive section toggle
+  document.getElementById('btn-show-retro').addEventListener('click', () => {
+    const sec = document.getElementById('retro-section');
+    const isHidden = sec.classList.contains('hidden');
+    sec.classList.toggle('hidden');
+    if (isHidden) initRetroSection();
+  });
+  document.getElementById('retro-time').addEventListener('input', updateRetroPenaltyPreview);
+  document.getElementById('retro-fm-toggle').addEventListener('change', e => {
+    document.getElementById('retro-fm-reason-field').classList.toggle('hidden', !e.target.checked);
+    updateRetroPenaltyPreview();
+  });
+  document.getElementById('btn-retro-register').addEventListener('click', handleRetroRegister);
 
   // Back button (result → main)
   document.getElementById('btn-back').addEventListener('click', async () => {

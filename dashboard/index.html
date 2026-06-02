@@ -186,6 +186,12 @@
         </div>
       </div>
 
+      <!-- Retroactive link — always visible -->
+      <div class="retro-link-row">
+        <i data-lucide="calendar-clock" style="width:13px;height:13px;color:var(--text-3)"></i>
+        <button class="link-btn" id="btn-open-retro">¿Olvidaste registrar un día anterior?</button>
+      </div>
+
       <!-- Already registered confirmation -->
       <div id="aw-registered-banner" class="aw-registered-banner hidden">
         <i data-lucide="badge-check"></i>
@@ -310,6 +316,19 @@
               <tr><td colspan="6" class="empty-row"><i data-lucide="loader-2" class="spin"></i></td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+      <!-- No-shows section -->
+      <div class="card">
+        <div class="card-title-row">
+          <i data-lucide="user-x"></i>
+          <span>Días sin registro — penalización L25/día</span>
+          <button id="btn-apply-noshows" class="btn btn-sm btn-danger hidden" style="margin-left:auto">
+            <i data-lucide="zap"></i> Aplicar penalizaciones
+          </button>
+        </div>
+        <div id="noshow-section">
+          <p class="empty-row" style="padding:16px;text-align:center"><i data-lucide="loader-2" class="spin"></i></p>
         </div>
       </div>
     </section>
@@ -544,6 +563,58 @@
     <div class="modal-footer">
       <button id="btn-save-member" class="btn btn-primary btn-block">
         <i data-lucide="user-plus"></i><span>Agregar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Retroactive Registration Modal -->
+<div id="modal-retro" class="modal hidden" role="dialog">
+  <div class="modal-backdrop" id="backdrop-retro"></div>
+  <div class="modal-box modal-md">
+    <div class="modal-header">
+      <span class="modal-title"><i data-lucide="calendar-plus"></i> Registrar día anterior</span>
+      <button class="icon-btn modal-close" data-modal="modal-retro"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--amber);display:flex;align-items:center;gap:8px">
+        <i data-lucide="info" style="flex-shrink:0;width:14px;height:14px"></i>
+        <span>Usa esto si olvidaste registrar tu llegada en días anteriores. Quedará pendiente de verificación.</span>
+      </div>
+      <div class="field">
+        <label class="field-label"><i data-lucide="calendar"></i> Fecha</label>
+        <input type="date" id="retro-date" class="input">
+        <p class="field-hint">Solo días anteriores al día de hoy.</p>
+      </div>
+      <div class="field">
+        <label class="field-label"><i data-lucide="clock-4"></i> Hora de llegada real</label>
+        <input type="time" id="retro-time" class="input input-time" step="60">
+      </div>
+      <div id="retro-penalty-preview" class="penalty-preview hidden">
+        <div id="retro-preview-icon" class="preview-sev-icon ontime"></div>
+        <div class="preview-text">
+          <p class="preview-label" id="retro-preview-label">A tiempo</p>
+          <p class="preview-amount" id="retro-preview-amount">L0</p>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <p class="toggle-title"><i data-lucide="shield-check"></i> Fuerza Mayor</p>
+          <p class="toggle-desc">Falla de transporte, emergencia, actividad autorizada o desastre.</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="retro-fm-toggle">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+      <div id="retro-fm-reason-field" class="field hidden">
+        <label class="field-label"><i data-lucide="file-text"></i> Motivo</label>
+        <textarea id="retro-fm-reason" class="input textarea" rows="2" placeholder="Describe brevemente el motivo..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-retro-register" class="btn btn-primary btn-block">
+        <i data-lucide="calendar-plus"></i><span>Registrar llegada</span>
       </button>
     </div>
   </div>

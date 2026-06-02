@@ -25,6 +25,7 @@ function calculatePenalty(timeStr) {
 //  STORAGE KEYS
 // ══════════════════════════════════════════════════════════
 const KEYS = { token: 'lm_token' };
+const NO_SHOW_PENALTY = 25;;
 
 const DEFAULT_TEAM = {
   members: [
@@ -170,10 +171,12 @@ const SEV_CONFIG = {
   sev2:   { icon: 'alert-octagon',  label: 'Sev 2',         cls: 'sev2' },
   sev1:   { icon: 'zap',            label: 'Sev 1',         cls: 'sev1' },
   fm:     { icon: 'shield-check',   label: 'Fuerza Mayor',  cls: 'fm' },
+  noshow: { icon: 'user-x',         label: 'Falta',         cls: 'noshow' },
 };
 
 function sevBadge(record) {
-  if (record.isForceMajeure) return badge('fm', 'Fuerza Mayor');
+  if (record.isNoShow)        return badge('noshow', 'Falta');
+  if (record.isForceMajeure)  return badge('fm', 'Fuerza Mayor');
   if (!record.severity)       return badge('ontime', 'A tiempo');
   return badge(`sev${record.severity}`, `Sev ${record.severity}`);
 }
@@ -351,7 +354,7 @@ function renderMonth() {
   document.getElementById('month-label').textContent = currentMonthLabel().charAt(0).toUpperCase() + currentMonthLabel().slice(1);
 
   const monthRecords = APP.records.filter(r => r.date && r.date.startsWith(ym));
-  const verifiedReal = monthRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && r.severity);
+  const verifiedReal = monthRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && (r.severity || r.isNoShow));
 
   // Excellence clause
   const hasIncidents = verifiedReal.length > 0;
@@ -405,7 +408,7 @@ function renderMonth() {
   }
 
   tbody.innerHTML = members.map(member => {
-    const mRecs = monthRecords.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && r.severity);
+    const mRecs = monthRecords.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && (r.severity || r.isNoShow));
     const totalMin   = mRecs.reduce((s, r) => s + (r.minutesLate || 0), 0);
     const totalPen   = mRecs.reduce((s, r) => s + (r.penalty || 0), 0);
     const totalPaid  = APP.payments.filter(p => p.debtorId === member.id).reduce((s, p) => s + p.amount, 0);
@@ -428,6 +431,214 @@ function renderMonth() {
   }).join('');
 
   lucide.createIcons();
+  renderNoShowsSection();
+}
+
+// ══════════════════════════════════════════════════════════
+//  NO-SHOW DETECTION & APPLICATION
+// ══════════════════════════════════════════════════════════
+function getWorkingDaysBefore(yearMonth) {
+  const [year, month] = yearMonth.split('-').map(Number);
+  const todayStr = today();
+  const days = [];
+  const d = new Date(year, month - 1, 1);
+  while (d.getMonth() === month - 1) {
+    const dow = d.getDay();
+    const dateStr = d.toLocaleDateString('sv-SE');
+    if (dow !== 0 && dow !== 6 && dateStr < todayStr) days.push(dateStr);
+    d.setDate(d.getDate() + 1);
+  }
+  return days;
+}
+
+function renderNoShowsSection() {
+  const ym = currentYearMonth();
+  const workingDays = getWorkingDaysBefore(ym);
+  const members = APP.team?.members?.filter(m => m.active && m.role !== 'admin') || [];
+
+  const noShows = [];
+  for (const m of members) {
+    const missingDays = workingDays.filter(d => !APP.records.find(r => r.memberId === m.id && r.date === d));
+    if (missingDays.length) noShows.push({ member: m, dates: missingDays });
+  }
+
+  window._pendingNoShows = noShows;
+
+  const container = document.getElementById('noshow-section');
+  const btnApply  = document.getElementById('btn-apply-noshows');
+  if (!container) return;
+
+  if (!noShows.length) {
+    container.innerHTML = `<p style="padding:16px;text-align:center;color:var(--green);font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="check-circle-2"></i> Sin días pendientes este mes</p>`;
+    btnApply?.classList.add('hidden');
+    lucide.createIcons();
+    return;
+  }
+
+  if (APP.member?.role === 'admin') btnApply?.classList.remove('hidden');
+  else btnApply?.classList.add('hidden');
+
+  container.innerHTML = noShows.map(({ member, dates }) => {
+    const total = dates.length * NO_SHOW_PENALTY;
+    const isSelf = member.id === APP.member.id;
+    return `<div class="noshow-row">
+      <div class="member-cell" style="min-width:140px">
+        <div class="cell-avatar">${initials(member.name)}</div>
+        <span class="${isSelf ? 'cell-name cell-self' : 'cell-name'}">${member.name}${isSelf ? ' (tú)' : ''}</span>
+      </div>
+      <div class="noshow-dates">
+        ${dates.map(d => `<span class="noshow-date-chip">${fmtDate(d)}</span>`).join('')}
+      </div>
+      <div class="noshow-total">
+        <span class="money-red">L${total}</span>
+        <span style="font-size:11px;color:var(--text-3)">${dates.length} día(s) × L${NO_SHOW_PENALTY}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+async function applyNoShowPenalties() {
+  const noShows = window._pendingNoShows;
+  if (!noShows?.length) return;
+
+  const totalCount = noShows.reduce((s, ns) => s + ns.dates.length, 0);
+  const totalAmt   = totalCount * NO_SHOW_PENALTY;
+  if (!confirm(`¿Aplicar penalización de L${NO_SHOW_PENALTY} por cada uno de los ${totalCount} días sin registro? Total: L${totalAmt}. Esta acción no se puede deshacer.`)) return;
+
+  const now = new Date().toISOString();
+  const newRecords = [];
+  for (const { member, dates } of noShows) {
+    for (const dateStr of dates) {
+      newRecords.push({
+        id:                 uuid(),
+        memberId:           member.id,
+        memberName:         member.name,
+        date:               dateStr,
+        claimedArrivalTime: null,
+        submittedAt:        now,
+        minutesLate:        0,
+        severity:           null,
+        penalty:            NO_SHOW_PENALTY,
+        coffeeRequired:     false,
+        isForceMajeure:     false,
+        isNoShow:           true,
+        status:             'verified',
+        verifiedBy:         APP.member.id,
+        verifiedAt:         now,
+        verifierName:       APP.member.name,
+      });
+    }
+  }
+
+  try {
+    const snap = await db.ref('records').get();
+    const raw  = snap.exists() ? snap.val() : { records: [] };
+    const recs = fbToArray(raw.records);
+    for (const nr of newRecords) {
+      if (!recs.find(r => r.memberId === nr.memberId && r.date === nr.date)) recs.push(nr);
+    }
+    await db.ref('records').set({ records: recs });
+    showToast(`${newRecords.length} penalización(es) de falta aplicadas · L${totalAmt} al fondo`);
+    await refreshData();
+  } catch (err) {
+    showToast('Error al aplicar penalizaciones: ' + err.message, true);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  RETROACTIVE REGISTRATION
+// ══════════════════════════════════════════════════════════
+function openRetroModal() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const maxDate  = yesterday.toLocaleDateString('sv-SE');
+  const firstDay = currentYearMonth() + '-01';
+
+  const dateEl = document.getElementById('retro-date');
+  dateEl.min   = firstDay;
+  dateEl.max   = maxDate;
+  dateEl.value = maxDate;
+
+  document.getElementById('retro-time').value = '08:00';
+  document.getElementById('retro-fm-toggle').checked = false;
+  document.getElementById('retro-fm-reason-field').classList.add('hidden');
+  document.getElementById('retro-fm-reason').value = '';
+  updateRetroPenaltyPreview();
+  openModal('modal-retro');
+}
+
+function updateRetroPenaltyPreview() {
+  const timeVal  = document.getElementById('retro-time')?.value;
+  const fmOn     = document.getElementById('retro-fm-toggle')?.checked;
+  const preview  = document.getElementById('retro-penalty-preview');
+  const iconEl   = document.getElementById('retro-preview-icon');
+  const labelEl  = document.getElementById('retro-preview-label');
+  const amountEl = document.getElementById('retro-preview-amount');
+  if (!preview || !timeVal) { preview?.classList.add('hidden'); return; }
+
+  const result = calculatePenalty(timeVal);
+  const type   = fmOn ? 'fm' : result.type;
+  preview.classList.remove('hidden');
+  iconEl.className    = 'preview-sev-icon ' + type;
+  iconEl.innerHTML    = `<i data-lucide="${AW_SEV_ICONS[type]}"></i>`;
+  labelEl.textContent = fmOn ? 'Fuerza Mayor — Sin castigo' : result.label;
+  amountEl.textContent= fmOn ? 'L0' : `L${result.penalty}`;
+  lucide.createIcons();
+}
+
+async function handleRetroRegister() {
+  const dateVal  = document.getElementById('retro-date').value;
+  const timeVal  = document.getElementById('retro-time').value;
+  const fmOn     = document.getElementById('retro-fm-toggle').checked;
+  const fmReason = document.getElementById('retro-fm-reason').value.trim();
+
+  if (!dateVal)            { showToast('Selecciona la fecha', true); return; }
+  if (dateVal >= today())  { showToast('Solo se pueden registrar días anteriores a hoy', true); return; }
+  if (!timeVal)            { showToast('Ingresa la hora de llegada', true); return; }
+  if (fmOn && !fmReason)  { showToast('Describe el motivo de fuerza mayor', true); return; }
+
+  const penalty = calculatePenalty(timeVal);
+  const now     = new Date();
+
+  const record = {
+    id:                 uuid(),
+    memberId:           APP.member.id,
+    memberName:         APP.member.name,
+    date:               dateVal,
+    claimedArrivalTime: timeVal,
+    submittedAt:        now.toISOString(),
+    minutesLate:        fmOn ? 0 : penalty.minutesLate,
+    severity:           fmOn ? null : penalty.severity,
+    penalty:            fmOn ? 0    : penalty.penalty,
+    coffeeRequired:     fmOn ? false : penalty.coffeeRequired,
+    isForceMajeure:     fmOn,
+    forceMajeureReason: fmReason,
+    isRetroactive:      true,
+    status:             'pending',
+    verifiedBy:         null,
+    verifiedAt:         null,
+    verifierName:       null,
+  };
+
+  const btn = document.getElementById('btn-retro-register');
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader-2" class="spin"></i><span>Registrando...</span>`;
+  lucide.createIcons();
+
+  try {
+    await writeAction('add_record', record);
+    closeModal('modal-retro');
+    showToast(`Llegada del ${fmtDate(dateVal)} registrada · Pendiente de verificación`);
+    await refreshData();
+  } catch(err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i data-lucide="calendar-plus"></i><span>Registrar llegada</span>`;
+    lucide.createIcons();
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1150,6 +1361,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Export CSV
   document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+
+  // Retroactive modal
+  document.getElementById('btn-open-retro').addEventListener('click', openRetroModal);
+  document.getElementById('backdrop-retro').addEventListener('click', () => closeModal('modal-retro'));
+  document.getElementById('retro-time').addEventListener('input', updateRetroPenaltyPreview);
+  document.getElementById('retro-fm-toggle').addEventListener('change', e => {
+    document.getElementById('retro-fm-reason-field').classList.toggle('hidden', !e.target.checked);
+    updateRetroPenaltyPreview();
+  });
+  document.getElementById('btn-retro-register').addEventListener('click', handleRetroRegister);
+
+  // Apply no-shows
+  document.getElementById('btn-apply-noshows').addEventListener('click', applyNoShowPenalties);
 
   // Arrival widget events
   document.getElementById('aw-arrival-time').addEventListener('input', () => {

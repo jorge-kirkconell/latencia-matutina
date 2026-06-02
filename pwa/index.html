@@ -111,6 +111,58 @@
         </button>
       </div>
 
+      <!-- Retroactive registration button (always visible) -->
+      <button id="btn-show-retro" class="btn btn-sm btn-secondary btn-block" style="margin-bottom:8px">
+        <i data-lucide="calendar-plus"></i>
+        <span>Registrar día anterior</span>
+      </button>
+
+      <!-- Retroactive registration form -->
+      <div id="retro-section" class="card hidden" style="margin-bottom:8px">
+        <div class="card-title-row">
+          <i data-lucide="calendar-plus"></i>
+          <span>Día anterior olvidado</span>
+        </div>
+        <div class="field">
+          <label class="field-label" for="retro-date">
+            <i data-lucide="calendar"></i> Fecha
+          </label>
+          <input type="date" id="retro-date" class="input">
+          <p class="field-hint">Solo días anteriores a hoy.</p>
+        </div>
+        <div class="field">
+          <label class="field-label" for="retro-time">
+            <i data-lucide="clock-4"></i> Hora de llegada real
+          </label>
+          <input type="time" id="retro-time" class="input input-time" step="60">
+        </div>
+        <div id="retro-penalty-preview" class="penalty-preview hidden">
+          <div id="retro-preview-wrap" class="preview-sev-icon"></div>
+          <div class="preview-text">
+            <p class="preview-label" id="retro-preview-label">—</p>
+            <p class="preview-amount" id="retro-preview-amount">L0</p>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <p class="toggle-title"><i data-lucide="shield-check"></i> Fuerza Mayor</p>
+            <p class="toggle-desc">Falla de transporte, emergencia, actividad autorizada.</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="retro-fm-toggle">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+        <div id="retro-fm-reason-field" class="field hidden">
+          <label class="field-label" for="retro-fm-reason"><i data-lucide="file-text"></i> Motivo</label>
+          <textarea id="retro-fm-reason" class="input textarea" rows="2" placeholder="Describe brevemente el motivo..."></textarea>
+        </div>
+        <button id="btn-retro-register" class="btn btn-primary btn-block">
+          <i data-lucide="send"></i>
+          <span>Registrar llegada anterior</span>
+        </button>
+      </div>
+
       <!-- Registration Form -->
       <div id="registration-form" class="card">
         <div class="card-title-row">

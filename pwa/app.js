@@ -287,6 +287,7 @@ async function loadMainScreen() {
     }
   } catch (_) { /* offline — proceed without check */ }
 
+  document.getElementById('retro-section')?.classList.add('hidden');
   showScreen('screen-main');
   startClock();
   updatePenaltyPreview();
@@ -322,12 +323,14 @@ function initRetroSection() {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const maxDate  = yesterday.toLocaleDateString('sv-SE');
-  const now      = new Date();
-  const firstDay = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+
+  const minCap = new Date();
+  minCap.setDate(minCap.getDate() - 30);
+  const minDate = minCap.toLocaleDateString('sv-SE');
 
   const retroDate  = document.getElementById('retro-date');
   retroDate.max    = maxDate;
-  retroDate.min    = firstDay;
+  retroDate.min    = minDate;
   retroDate.value  = maxDate;
 
   document.getElementById('retro-time').value = '08:00';
@@ -406,11 +409,10 @@ async function handleRetroRegister() {
 
   try {
     await writeAction('add_record', record);
-    document.getElementById('retro-section').classList.add('hidden');
     alert(`Llegada del ${d}/${m}/${y} registrada.\nQueda pendiente de verificación.`);
+    await loadMainScreen();
   } catch (err) {
     alert('Error: ' + err.message);
-  } finally {
     btn.disabled = false;
     setLoading(false);
   }

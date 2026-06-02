@@ -170,7 +170,8 @@ html, body {
 .hrc-type.sev2   { background: rgba(239,68,68,0.15);   color: #ef4444; }
 .hrc-type.sev1   { background: rgba(255,34,34,0.12);   color: #ff5555; }
 .hrc-type.fm     { background: rgba(59,130,246,0.15);  color: #3b82f6; }
-.hrc-type.noshow { background: rgba(139,92,246,0.15);  color: #8b5cf6; }
+.hrc-type.noshow   { background: rgba(139,92,246,0.15);  color: #8b5cf6; }
+.hrc-type.pardoned { background: rgba(20,184,166,0.15);  color: #2dd4bf; }
 
 .hrc-status { font-size: 10px; font-weight: 600; color: var(--text-3); }
 .hrc-status.verified { color: #10b981; }

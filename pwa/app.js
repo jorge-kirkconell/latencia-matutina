@@ -564,7 +564,7 @@ async function loadHistoryScreen() {
     const [{ records }, payments] = await Promise.all([readRecords(), readPayments()]);
 
     const myRecords    = records.filter(r => r.memberId === m.id).sort((a,b) => b.date.localeCompare(a.date));
-    const verifiedRecs = myRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && (r.severity || r.isNoShow));
+    const verifiedRecs = myRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
     const totalPenalty = verifiedRecs.reduce((s, r) => s + (r.penalty || 0), 0);
     const totalPaid    = payments.filter(p => p.debtorId === m.id).reduce((s, p) => s + p.amount, 0);
     const saldo        = totalPenalty - totalPaid;
@@ -593,9 +593,9 @@ async function loadHistoryScreen() {
     if (!myRecords.length) {
       listEl.innerHTML = `<div class="hist-empty"><i data-lucide="inbox"></i><p>Sin registros aún</p></div>`;
     } else {
-      const SEV_LABELS = { ontime:'A tiempo', sev3:'Sev 3', sev2:'Sev 2', sev1:'Sev 1', fm:'Fuerza Mayor', noshow:'Falta' };
+      const SEV_LABELS = { ontime:'A tiempo', sev3:'Sev 3', sev2:'Sev 2', sev1:'Sev 1', fm:'Fuerza Mayor', noshow:'Falta', pardoned:'Perdonado' };
       listEl.innerHTML = myRecords.map(r => {
-        const type = r.isNoShow ? 'noshow' : (r.isForceMajeure ? 'fm' : (r.severity ? `sev${r.severity}` : 'ontime'));
+        const type = r.isPardoned ? 'pardoned' : (r.isNoShow ? 'noshow' : (r.isForceMajeure ? 'fm' : (r.severity ? `sev${r.severity}` : 'ontime')));
         const statusLabel = { pending:'Pendiente', verified:'Verificado', rejected:'Rechazado' }[r.status] || r.status;
         return `<div class="hist-record-card">
           <div class="hrc-left">

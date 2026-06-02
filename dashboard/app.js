@@ -122,6 +122,18 @@ async function writeAction(action, payload) {
     await db.ref('records').set({ records: recs });
     return { success: true };
   }
+  if (action === 'pardon_record') {
+    const snap = await db.ref('records').get();
+    const raw  = snap.exists() ? snap.val() : { records: [] };
+    const recs = fbToArray(raw.records);
+    const idx  = recs.findIndex(r => r.id === payload.recordId);
+    if (idx === -1) throw new Error('Registro no encontrado');
+    if (!recs[idx].isNoShow) throw new Error('Solo se pueden perdonar faltas de registro');
+    recs[idx] = { ...recs[idx], isPardoned: true, penalty: 0,
+      pardonedBy: payload.pardonedBy, pardonedByName: payload.pardonedByName, pardonedAt: payload.pardonedAt };
+    await db.ref('records').set({ records: recs });
+    return { success: true };
+  }
   if (action === 'update_team') {
     await db.ref('team').set(payload);
     return { success: true };
@@ -172,15 +184,17 @@ function currentYearMonth() {
 
 // Severity display helpers
 const SEV_CONFIG = {
-  ontime: { icon: 'check-circle-2', label: 'A tiempo',      cls: 'ontime' },
-  sev3:   { icon: 'alert-triangle', label: 'Sev 3',         cls: 'sev3' },
-  sev2:   { icon: 'alert-octagon',  label: 'Sev 2',         cls: 'sev2' },
-  sev1:   { icon: 'zap',            label: 'Sev 1',         cls: 'sev1' },
-  fm:     { icon: 'shield-check',   label: 'Fuerza Mayor',  cls: 'fm' },
-  noshow: { icon: 'user-x',         label: 'Falta',         cls: 'noshow' },
+  ontime:   { icon: 'check-circle-2',  label: 'A tiempo',      cls: 'ontime' },
+  sev3:     { icon: 'alert-triangle',  label: 'Sev 3',         cls: 'sev3' },
+  sev2:     { icon: 'alert-octagon',   label: 'Sev 2',         cls: 'sev2' },
+  sev1:     { icon: 'zap',             label: 'Sev 1',         cls: 'sev1' },
+  fm:       { icon: 'shield-check',    label: 'Fuerza Mayor',  cls: 'fm' },
+  noshow:   { icon: 'user-x',          label: 'Falta',         cls: 'noshow' },
+  pardoned: { icon: 'heart-handshake', label: 'Perdonado',     cls: 'pardoned' },
 };
 
 function sevBadge(record) {
+  if (record.isPardoned)      return badge('pardoned', 'Perdonado');
   if (record.isNoShow)        return badge('noshow', 'Falta');
   if (record.isForceMajeure)  return badge('fm', 'Fuerza Mayor');
   if (!record.severity)       return badge('ontime', 'A tiempo');
@@ -361,7 +375,7 @@ function renderMonth() {
   document.getElementById('month-label').textContent = currentMonthLabel().charAt(0).toUpperCase() + currentMonthLabel().slice(1);
 
   const monthRecords = APP.records.filter(r => r.date && r.date.startsWith(ym));
-  const verifiedReal = monthRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && (r.severity || r.isNoShow));
+  const verifiedReal = monthRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
 
   // Excellence clause
   const hasIncidents = verifiedReal.length > 0;
@@ -415,7 +429,7 @@ function renderMonth() {
   }
 
   tbody.innerHTML = members.map(member => {
-    const mRecs = monthRecords.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && (r.severity || r.isNoShow));
+    const mRecs = monthRecords.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
     const totalMin   = mRecs.reduce((s, r) => s + (r.minutesLate || 0), 0);
     const totalPen   = mRecs.reduce((s, r) => s + (r.penalty || 0), 0);
     const totalPaid  = APP.payments.filter(p => p.debtorId === member.id).reduce((s, p) => s + p.amount, 0);
@@ -649,7 +663,7 @@ function renderDebts() {
   const grid    = document.getElementById('debts-grid');
 
   grid.innerHTML = members.map(member => {
-    const verifiedRecs  = APP.records.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && r.severity);
+    const verifiedRecs  = APP.records.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
     const totalPenalty  = verifiedRecs.reduce((s, r) => s + (r.penalty || 0), 0);
     const totalPaid     = APP.payments.filter(p => p.debtorId === member.id).reduce((s, p) => s + p.amount, 0);
     const saldo         = totalPenalty - totalPaid;
@@ -727,6 +741,7 @@ function renderHistory() {
   tbody.innerHTML = recs.map(r => {
     const isSelf     = r.memberId === APP.member.id;
     const canVerify  = !isSelf && r.status === 'pending';
+    const canPardon  = APP.member?.role === 'admin' && r.isNoShow && !r.isPardoned;
     return `<tr>
     <td><span style="font-size:12px;font-weight:600;color:var(--text-2)">${fmtDate(r.date)}</span></td>
     <td>
@@ -735,15 +750,20 @@ function renderHistory() {
         <span class="${isSelf ? 'cell-name cell-self' : 'cell-name'}">${r.memberName}${isSelf ? ' (tú)' : ''}</span>
       </div>
     </td>
-    <td><strong>${fmt12(r.claimedArrivalTime)}</strong></td>
+    <td><strong>${r.claimedArrivalTime ? fmt12(r.claimedArrivalTime) : '—'}</strong></td>
     <td>${sevBadge(r)}</td>
-    <td>${r.isForceMajeure ? '<span style="color:var(--text-3)">—</span>' : moneyCell(r.penalty)}</td>
+    <td>${(r.isForceMajeure || r.isPardoned) ? '<span style="color:var(--text-3)">—</span>' : moneyCell(r.penalty)}</td>
     <td>${statusBadge(r.status)}</td>
     <td><span style="font-size:12px;color:var(--text-3)">${r.verifierName || '—'}</span></td>
     <td>
-      ${canVerify ? `<button class="btn btn-sm btn-success" onclick="openVerifyModal('${r.id}')">
-        <i data-lucide="shield-check"></i> Verificar
-      </button>` : ''}
+      <div class="action-row">
+        ${canVerify ? `<button class="btn btn-sm btn-success" onclick="openVerifyModal('${r.id}')">
+          <i data-lucide="shield-check"></i> Verificar
+        </button>` : ''}
+        ${canPardon ? `<button class="btn btn-sm btn-secondary" onclick="pardonRecord('${r.id}')">
+          <i data-lucide="heart-handshake"></i> Perdonar
+        </button>` : ''}
+      </div>
     </td>
   </tr>`;
   }).join('');
@@ -791,6 +811,26 @@ async function deleteOwnRecord(recordId) {
   try {
     await writeAction('delete_record', { recordId, memberId: APP.member.id });
     showToast('Registro eliminado — ya puedes ingresar la hora correcta');
+    await refreshData();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function pardonRecord(recordId) {
+  const record = APP.records.find(r => r.id === recordId);
+  if (!record) return;
+  const memberName = record.memberName;
+  const dateLabel  = fmtDate(record.date);
+  if (!confirm(`¿Perdonar la falta de ${memberName} del ${dateLabel}?\nEl registro permanecerá pero sin cargo al fondo.`)) return;
+  try {
+    await writeAction('pardon_record', {
+      recordId,
+      pardonedBy:     APP.member.id,
+      pardonedByName: APP.member.name,
+      pardonedAt:     new Date().toISOString(),
+    });
+    showToast(`Falta de ${memberName} perdonada — sin cargo al fondo`);
     await refreshData();
   } catch (err) {
     showToast(err.message, true);
@@ -1037,7 +1077,7 @@ function renderMyResumen() {
   document.getElementById('myresume-name').textContent = member.name;
 
   const myRecords    = APP.records.filter(r => r.memberId === member.id).sort((a,b) => b.date.localeCompare(a.date));
-  const verifiedRecs = myRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && (r.severity || r.isNoShow));
+  const verifiedRecs = myRecords.filter(r => r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
   const totalPenalty = verifiedRecs.reduce((s, r) => s + (r.penalty || 0), 0);
   const totalPaid    = APP.payments.filter(p => p.debtorId === member.id).reduce((s, p) => s + p.amount, 0);
   const saldo        = totalPenalty - totalPaid;

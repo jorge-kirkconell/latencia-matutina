@@ -469,7 +469,8 @@ button { font-family: var(--font); }
 .sev-badge.sev2   { background: rgba(239,68,68,0.12);  color: var(--red); }
 .sev-badge.sev1   { background: rgba(255,34,34,0.12);  color: #ff5555; }
 .sev-badge.fm     { background: rgba(59,130,246,0.12); color: var(--blue); }
-.sev-badge.noshow { background: rgba(139,92,246,0.12); color: var(--purple); }
+.sev-badge.noshow   { background: rgba(139,92,246,0.12); color: var(--purple); }
+.sev-badge.pardoned { background: rgba(20,184,166,0.12); color: #2dd4bf; }
 
 /* Status badges */
 .status-badge {

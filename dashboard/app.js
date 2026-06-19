@@ -419,7 +419,7 @@ function renderMonth() {
   });
 
   // Per-member summary
-  const members = APP.team?.members?.filter(m => m.active && m.role !== 'admin') || [];
+  const members = APP.team?.members?.filter(m => m.active) || [];
   const tbody   = document.getElementById('month-tbody');
 
   if (!members.length) {

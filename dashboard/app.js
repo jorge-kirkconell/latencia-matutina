@@ -466,7 +466,7 @@ function getWorkingDaysBefore(yearMonth) {
   while (d.getMonth() === month - 1) {
     const dow = d.getDay();
     const dateStr = d.toLocaleDateString('sv-SE');
-    if (dow !== 0 && dow !== 6 && dateStr < todayStr) days.push(dateStr);
+    if (dow !== 0 && dateStr < todayStr) days.push(dateStr);
     d.setDate(d.getDate() + 1);
   }
   return days;

@@ -423,19 +423,28 @@ function renderMonth() {
   const tbody   = document.getElementById('month-tbody');
 
   if (!members.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty-row">Sin colaboradores</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-row">Sin colaboradores</td></tr>`;
     lucide.createIcons();
     return;
   }
 
   tbody.innerHTML = members.map(member => {
-    const mRecs      = monthRecords.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
-    const allRecs    = APP.records.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
+    const validRec   = r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow);
+    const mRecs      = monthRecords.filter(validRec);
+    const prevRecs   = APP.records.filter(r => validRec(r) && (!r.date || !r.date.startsWith(ym)));
+    const allRecs    = APP.records.filter(validRec);
+
     const totalMin   = mRecs.reduce((s, r) => s + (r.minutesLate || 0), 0);
-    const totalPen   = mRecs.reduce((s, r) => s + (r.penalty || 0), 0);
+    const penMes     = mRecs.reduce((s, r) => s + (r.penalty || 0), 0);
+    const penPrev    = prevRecs.reduce((s, r) => s + (r.penalty || 0), 0);
     const allTimePen = allRecs.reduce((s, r) => s + (r.penalty || 0), 0);
+
+    const paidMes    = APP.payments.filter(p => p.debtorId === member.id && p.date && p.date.startsWith(ym)).reduce((s, p) => s + p.amount, 0);
     const totalPaid  = APP.payments.filter(p => p.debtorId === member.id).reduce((s, p) => s + p.amount, 0);
-    const saldo      = allTimePen - totalPaid;
+    const prevPaid   = APP.payments.filter(p => p.debtorId === member.id && (!p.date || !p.date.startsWith(ym))).reduce((s, p) => s + p.amount, 0);
+
+    const saldoAnt   = penPrev - prevPaid;
+    const saldoFinal = allTimePen - totalPaid;
     const isSelf     = member.id === APP.member.id;
 
     return `<tr>
@@ -447,9 +456,11 @@ function renderMonth() {
       </td>
       <td><strong>${mRecs.length}</strong></td>
       <td>${totalMin} min</td>
-      <td class="money-red">L${totalPen}</td>
+      <td class="money-red">L${penMes}</td>
+      <td class="${saldoAnt > 0 ? 'money-red' : saldoAnt < 0 ? 'money-green' : ''}">L${saldoAnt}</td>
+      <td class="money-green">L${paidMes}</td>
       <td class="money-green">L${totalPaid}</td>
-      <td class="${saldo > 0 ? 'money-red' : 'money-green'}">L${saldo}</td>
+      <td class="${saldoFinal > 0 ? 'money-red' : 'money-green'}"><strong>L${saldoFinal}</strong></td>
     </tr>`;
   }).join('');
 

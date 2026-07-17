@@ -142,7 +142,8 @@ async function writeAction(action, payload) {
     if (idx === -1) throw new Error('Registro no encontrado');
     if (!recs[idx].isPardoned) throw new Error('Este registro no está perdonado');
     const pardonDay = recs[idx].pardonedAt ? new Date(recs[idx].pardonedAt).toLocaleDateString('sv-SE') : null;
-    if (pardonDay !== today()) throw new Error('Solo puedes anular un perdón el mismo día que fue aplicado');
+    const pardonLimit = pardonDay ? (() => { const d = new Date(pardonDay); d.setDate(d.getDate() + 1); return d.toLocaleDateString('sv-SE'); })() : null;
+    if (!pardonLimit || today() > pardonLimit) throw new Error('El plazo para anular este perdón ya venció (máximo 1 día después de perdonar)');
     recs[idx] = { ...recs[idx], isPardoned: false, penalty: 25,
       pardonedBy: null, pardonedByName: null, pardonedAt: null };
     await db.ref('records').set({ records: recs });
@@ -770,7 +771,8 @@ function renderHistory() {
     const canVerify  = !isSelf && r.status === 'pending';
     const canPardon   = APP.member?.role === 'admin' && r.isNoShow && !r.isPardoned;
     const pardonDay   = r.pardonedAt ? new Date(r.pardonedAt).toLocaleDateString('sv-SE') : null;
-    const canUnpardon = APP.member?.role === 'admin' && r.isPardoned && pardonDay === today();
+    const pardonLimit = pardonDay ? (() => { const d = new Date(pardonDay); d.setDate(d.getDate() + 1); return d.toLocaleDateString('sv-SE'); })() : null;
+    const canUnpardon = APP.member?.role === 'admin' && r.isPardoned && pardonLimit !== null && today() <= pardonLimit;
     return `<tr>
     <td><span style="font-size:12px;font-weight:600;color:var(--text-2)">${fmtDate(r.date)}</span></td>
     <td>

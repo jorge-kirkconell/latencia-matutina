@@ -939,7 +939,7 @@ function openPaymentModal(memberId) {
 
   APP.paymentTargetId = memberId;
 
-  const totalPen  = APP.records.filter(r => r.memberId === memberId && r.status === 'verified' && !r.isForceMajeure && r.severity).reduce((s, r) => s + r.penalty, 0);
+  const totalPen  = APP.records.filter(r => r.memberId === memberId && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow)).reduce((s, r) => s + r.penalty, 0);
   const totalPaid = APP.payments.filter(p => p.debtorId === memberId).reduce((s, p) => s + p.amount, 0);
   const saldo     = totalPen - totalPaid;
 
@@ -983,7 +983,7 @@ async function doSavePayment() {
 
   let finalAmount = amount;
   if (type === 'full') {
-    const totalPen  = APP.records.filter(r => r.memberId === memberId && r.status === 'verified' && !r.isForceMajeure && r.severity).reduce((s, r) => s + r.penalty, 0);
+    const totalPen  = APP.records.filter(r => r.memberId === memberId && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow)).reduce((s, r) => s + r.penalty, 0);
     const totalPaid = APP.payments.filter(p => p.debtorId === memberId).reduce((s, p) => s + p.amount, 0);
     finalAmount = Math.max(0, totalPen - totalPaid);
   }

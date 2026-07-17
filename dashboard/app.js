@@ -429,11 +429,13 @@ function renderMonth() {
   }
 
   tbody.innerHTML = members.map(member => {
-    const mRecs = monthRecords.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
+    const mRecs      = monthRecords.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
+    const allRecs    = APP.records.filter(r => r.memberId === member.id && r.status === 'verified' && !r.isForceMajeure && !r.isPardoned && (r.severity || r.isNoShow));
     const totalMin   = mRecs.reduce((s, r) => s + (r.minutesLate || 0), 0);
     const totalPen   = mRecs.reduce((s, r) => s + (r.penalty || 0), 0);
+    const allTimePen = allRecs.reduce((s, r) => s + (r.penalty || 0), 0);
     const totalPaid  = APP.payments.filter(p => p.debtorId === member.id).reduce((s, p) => s + p.amount, 0);
-    const saldo      = totalPen - totalPaid;
+    const saldo      = allTimePen - totalPaid;
     const isSelf     = member.id === APP.member.id;
 
     return `<tr>

@@ -134,6 +134,20 @@ async function writeAction(action, payload) {
     await db.ref('records').set({ records: recs });
     return { success: true };
   }
+  if (action === 'unpardon_record') {
+    const snap = await db.ref('records').get();
+    const raw  = snap.exists() ? snap.val() : { records: [] };
+    const recs = fbToArray(raw.records);
+    const idx  = recs.findIndex(r => r.id === payload.recordId);
+    if (idx === -1) throw new Error('Registro no encontrado');
+    if (!recs[idx].isPardoned) throw new Error('Este registro no está perdonado');
+    const pardonDay = recs[idx].pardonedAt ? new Date(recs[idx].pardonedAt).toLocaleDateString('sv-SE') : null;
+    if (pardonDay !== today()) throw new Error('Solo puedes anular un perdón el mismo día que fue aplicado');
+    recs[idx] = { ...recs[idx], isPardoned: false, penalty: 25,
+      pardonedBy: null, pardonedByName: null, pardonedAt: null };
+    await db.ref('records').set({ records: recs });
+    return { success: true };
+  }
   if (action === 'update_team') {
     await db.ref('team').set(payload);
     return { success: true };
@@ -754,7 +768,9 @@ function renderHistory() {
   tbody.innerHTML = recs.map(r => {
     const isSelf     = r.memberId === APP.member.id;
     const canVerify  = !isSelf && r.status === 'pending';
-    const canPardon  = APP.member?.role === 'admin' && r.isNoShow && !r.isPardoned;
+    const canPardon   = APP.member?.role === 'admin' && r.isNoShow && !r.isPardoned;
+    const pardonDay   = r.pardonedAt ? new Date(r.pardonedAt).toLocaleDateString('sv-SE') : null;
+    const canUnpardon = APP.member?.role === 'admin' && r.isPardoned && pardonDay === today();
     return `<tr>
     <td><span style="font-size:12px;font-weight:600;color:var(--text-2)">${fmtDate(r.date)}</span></td>
     <td>
@@ -775,6 +791,9 @@ function renderHistory() {
         </button>` : ''}
         ${canPardon ? `<button class="btn btn-sm btn-secondary" onclick="pardonRecord('${r.id}')">
           <i data-lucide="heart-handshake"></i> Perdonar
+        </button>` : ''}
+        ${canUnpardon ? `<button class="btn btn-sm btn-danger" onclick="unpardonRecord('${r.id}')">
+          <i data-lucide="undo-2"></i> Anular perdón
         </button>` : ''}
       </div>
     </td>
@@ -844,6 +863,21 @@ async function pardonRecord(recordId) {
       pardonedAt:     new Date().toISOString(),
     });
     showToast(`Falta de ${memberName} perdonada — sin cargo al fondo`);
+    await refreshData();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function unpardonRecord(recordId) {
+  const record = APP.records.find(r => r.id === recordId);
+  if (!record) return;
+  const memberName = record.memberName;
+  const dateLabel  = fmtDate(record.date);
+  if (!confirm(`¿Anular el perdón de ${memberName} del ${dateLabel}?\nSe restaurará el cargo de L${NO_SHOW_PENALTY} al fondo.`)) return;
+  try {
+    await writeAction('unpardon_record', { recordId });
+    showToast(`Perdón anulado — se restauró el cargo de L${NO_SHOW_PENALTY}`);
     await refreshData();
   } catch (err) {
     showToast(err.message, true);
